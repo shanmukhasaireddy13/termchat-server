@@ -3,7 +3,7 @@ termchat - Lightweight, non-intrusive terminal chat client with AI Assistant.
 Connects standard terminal input to your online Render/cloud server and receives text, images & AI responses.
 """
 
-__version__ = "0.2.3"
+__version__ = "0.2.4"
 
 __author__ = "TermChat Contributors"
 __license__ = "MIT"

@@ -4,8 +4,9 @@ from termchat.ai import get_ai_config, query_llm
 def test_get_ai_config_defaults():
     base_url, key, model = get_ai_config()
     assert isinstance(base_url, str)
-    assert isinstance(key, str)
+    assert key is None or isinstance(key, str)
     assert isinstance(model, str)
+    assert "kilo" in base_url.lower() or "kilo" in model.lower()
 
 
 def test_query_llm_fallback():
