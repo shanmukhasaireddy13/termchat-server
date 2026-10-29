@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
   <title>termchat — Web to Terminal Bridge</title>
   <link rel="stylesheet" href="/static/style.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%20width=%22100%22%20height=%22100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
@@ -15,19 +15,25 @@
         <div class="logo-box">
           <span class="prompt-symbol">&gt;_</span>
         </div>
-        <div>
+        <div class="brand-text">
           <h1>term<span>chat</span></h1>
-          <span class="subtitle">Live Terminal ↔ Web Bridge</span>
+          <span class="subtitle">Terminal ↔ Web Bridge</span>
         </div>
       </div>
 
       <div class="header-right">
+        <!-- Nickname pill in header for fast mobile editing -->
+        <button type="button" class="header-nick-btn" id="headerNickBtn" title="Change your display name">
+          <span class="nick-dot"></span>
+          <span id="headerNickname">WebUser</span>
+        </button>
+
         <div class="status-indicator" id="statusIndicator">
           <span class="dot disconnected" id="statusDot"></span>
-          <span id="statusText">Connecting...</span>
+          <span class="status-label" id="statusText">Connecting...</span>
         </div>
 
-        <button id="usersButton" class="header-btn" title="View Active Participants">
+        <button id="usersButton" class="header-btn" title="View Active Participants" aria-label="Active participants">
           👥 <span id="onlineCount">0</span>
         </button>
       </div>
@@ -35,11 +41,14 @@
 
     <!-- MAIN CHAT BODY -->
     <div class="app-body">
+      <!-- SIDEBAR BACKDROP FOR MOBILE -->
+      <div class="sidebar-backdrop hidden" id="sidebarBackdrop"></div>
+
       <!-- SIDEBAR FOR USERS -->
       <aside class="users-sidebar" id="usersSidebar">
         <div class="sidebar-top">
           <h3>Participants (<span id="sidebarUserCount">0</span>)</h3>
-          <button class="close-sidebar-btn" id="closeSidebarBtn">&times;</button>
+          <button class="close-sidebar-btn" id="closeSidebarBtn" aria-label="Close sidebar">&times;</button>
         </div>
         <div class="users-group">
           <div class="group-label">💻 Terminal Clients</div>
@@ -81,13 +90,13 @@
             <span id="previewFilename">image.png</span>
             <span class="preview-sub">Ready to send to terminal</span>
           </div>
-          <button class="remove-preview-btn" id="cancelUploadBtn" title="Cancel">&times;</button>
+          <button class="remove-preview-btn" id="cancelUploadBtn" title="Cancel upload">&times;</button>
         </div>
 
         <!-- INPUT FORM -->
         <div class="input-container">
           <form id="chatForm" class="input-form" onsubmit="return false;">
-            <!-- User Nickname Tag -->
+            <!-- User Nickname Tag (visible on desktop, compact on mobile) -->
             <button type="button" class="nickname-btn" id="nicknameBtn" title="Click to change your display name">
               <span class="nick-dot"></span>
               <span id="displayNickname">WebUser</span>
@@ -95,7 +104,7 @@
 
             <!-- Attach Image Button -->
             <input type="file" id="fileInput" accept="image/*" class="hidden" />
-            <button type="button" id="attachBtn" class="action-btn" title="Send image to terminal (or Ctrl+V to paste screenshot)">
+            <button type="button" id="attachBtn" class="action-btn" title="Send image to terminal (or Ctrl+V to paste screenshot)" aria-label="Send image">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                 <circle cx="8.5" cy="8.5" r="1.5"></circle>
@@ -104,21 +113,23 @@
             </button>
 
             <!-- Ask AI Button -->
-            <button type="button" id="askAiBtn" class="action-btn ai-btn" title="Ask AI Assistant (/ai ...)">
+            <button type="button" id="askAiBtn" class="action-btn ai-btn" title="Ask AI Assistant (/ai ...)" aria-label="Ask AI Assistant">
               🤖
             </button>
-
 
             <!-- Text Input -->
             <textarea
               id="messageInput"
-              placeholder="Send text or paste image (Ctrl+V) to terminal..."
+              placeholder="Type message or /ai question..."
               rows="1"
               maxlength="2000"
+              autocomplete="off"
+              autocorrect="on"
+              spellcheck="true"
             ></textarea>
 
             <!-- Send Button -->
-            <button type="submit" id="sendBtn" class="send-btn" title="Send (Enter)">
+            <button type="submit" id="sendBtn" class="send-btn" title="Send" aria-label="Send message">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <line x1="22" y1="2" x2="11" y2="13"></line>
                 <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
@@ -132,7 +143,7 @@
     <!-- LIGHTBOX MODAL FOR IMAGES -->
     <div class="modal-overlay hidden" id="lightboxModal">
       <div class="lightbox-content">
-        <button class="lightbox-close" id="closeLightbox">&times;</button>
+        <button class="lightbox-close" id="closeLightbox" aria-label="Close image">&times;</button>
         <img id="lightboxImg" src="" alt="Enlarged image" />
       </div>
     </div>

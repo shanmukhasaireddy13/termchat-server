@@ -1,7 +1,7 @@
 /**
  * termchat Web Client Application
  * Supports real-time text chat, image uploading, clipboard image pasting (Ctrl+V),
- * drag-and-drop images, and presence tracking.
+ * drag-and-drop images, presence tracking, and full mobile responsiveness.
  */
 
 (() => {
@@ -10,14 +10,17 @@
     ws: null,
     selectedFile: null,
     users: [],
+    isSubmitting: false,
   };
 
   // DOM Elements
+  const appContainer = document.getElementById("app");
   const statusDot = document.getElementById("statusDot");
   const statusText = document.getElementById("statusText");
   const onlineCount = document.getElementById("onlineCount");
   const usersButton = document.getElementById("usersButton");
   const usersSidebar = document.getElementById("usersSidebar");
+  const sidebarBackdrop = document.getElementById("sidebarBackdrop");
   const closeSidebarBtn = document.getElementById("closeSidebarBtn");
   const sidebarUserCount = document.getElementById("sidebarUserCount");
   const terminalList = document.getElementById("terminalList");
@@ -34,34 +37,81 @@
 
   const chatForm = document.getElementById("chatForm");
   const messageInput = document.getElementById("messageInput");
+  const sendBtn = document.getElementById("sendBtn");
   const attachBtn = document.getElementById("attachBtn");
   const askAiBtn = document.getElementById("askAiBtn");
   const fileInput = document.getElementById("fileInput");
+
   const nicknameBtn = document.getElementById("nicknameBtn");
   const displayNickname = document.getElementById("displayNickname");
-
+  const headerNickBtn = document.getElementById("headerNickBtn");
+  const headerNickname = document.getElementById("headerNickname");
 
   const lightboxModal = document.getElementById("lightboxModal");
   const lightboxImg = document.getElementById("lightboxImg");
   const closeLightbox = document.getElementById("closeLightbox");
 
   // Display initial nickname
-  displayNickname.textContent = state.username;
+  function updateDisplayedNicknames(name) {
+    if (displayNickname) displayNickname.textContent = name;
+    if (headerNickname) headerNickname.textContent = name;
+  }
+  updateDisplayedNicknames(state.username);
 
-  // Nickname change
-  nicknameBtn.addEventListener("click", () => {
+  // Nickname change dialog
+  function promptNicknameChange() {
     const val = prompt("Enter your display nickname:", state.username);
     if (val && val.trim() && val.trim() !== state.username) {
       state.username = val.trim();
       localStorage.setItem("termchat_web_user", state.username);
-      displayNickname.textContent = state.username;
+      updateDisplayedNicknames(state.username);
       if (state.ws) state.ws.close();
     }
-  });
+  }
 
-  // Sidebar toggle
-  usersButton.addEventListener("click", () => usersSidebar.classList.toggle("open"));
-  closeSidebarBtn.addEventListener("click", () => usersSidebar.classList.remove("open"));
+  if (nicknameBtn) nicknameBtn.addEventListener("click", promptNicknameChange);
+  if (headerNickBtn) headerNickBtn.addEventListener("click", promptNicknameChange);
+
+  // Mobile Sidebar Toggle & Backdrop
+  function setSidebarOpen(open) {
+    const willOpen = open !== undefined ? open : !usersSidebar.classList.contains("open");
+    if (willOpen) {
+      usersSidebar.classList.add("open");
+      if (sidebarBackdrop) sidebarBackdrop.classList.remove("hidden");
+    } else {
+      usersSidebar.classList.remove("open");
+      if (sidebarBackdrop) sidebarBackdrop.classList.add("hidden");
+    }
+  }
+
+  usersButton.addEventListener("click", () => setSidebarOpen());
+  closeSidebarBtn.addEventListener("click", () => setSidebarOpen(false));
+  if (sidebarBackdrop) {
+    sidebarBackdrop.addEventListener("click", () => setSidebarOpen(false));
+  }
+
+  // Textarea auto-resize
+  function adjustTextareaHeight() {
+    messageInput.style.height = "auto";
+    const newHeight = Math.min(messageInput.scrollHeight, 120);
+    messageInput.style.height = Math.max(newHeight, 24) + "px";
+  }
+
+  messageInput.addEventListener("input", adjustTextareaHeight);
+
+  // Mobile Visual Viewport Handling (Fixes virtual keyboard hiding input bar)
+  if (window.visualViewport && appContainer) {
+    const handleViewportChange = () => {
+      appContainer.style.height = `${window.visualViewport.height}px`;
+      scrollToBottom();
+    };
+    window.visualViewport.addEventListener("resize", handleViewportChange);
+    window.visualViewport.addEventListener("scroll", handleViewportChange);
+  }
+
+  messageInput.addEventListener("focus", () => {
+    setTimeout(scrollToBottom, 200);
+  });
 
   // WebSocket Connection
   function getWsUrl() {
@@ -127,7 +177,6 @@
         renderMessage(msg);
         scrollToBottom();
         break;
-
 
       case "system":
         renderSystem(msg);
@@ -204,7 +253,7 @@
       `;
     } else {
       let formattedText = escapeHtml(msg.text || "");
-      // Simple code block formatting for AI responses
+      // Markdown code blocks formatting
       if (formattedText.includes("```")) {
         formattedText = formattedText.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (match, lang, code) => {
           return `<pre><code>${code.trim()}</code></pre>`;
@@ -225,7 +274,6 @@
     messagesList.appendChild(row);
   }
 
-
   function renderSystem(msg) {
     const row = document.createElement("div");
     row.className = "sys-row";
@@ -234,7 +282,9 @@
   }
 
   function scrollToBottom() {
-    messagesList.scrollTop = messagesList.scrollHeight;
+    requestAnimationFrame(() => {
+      messagesList.scrollTop = messagesList.scrollHeight;
+    });
   }
 
   // File Upload Handling
@@ -244,8 +294,8 @@
   askAiBtn.addEventListener("click", () => {
     messageInput.value = "/ai ";
     messageInput.focus();
+    adjustTextareaHeight();
   });
-
 
   fileInput.addEventListener("change", (e) => {
     if (e.target.files && e.target.files[0]) {
@@ -264,6 +314,7 @@
       previewImg.src = e.target.result;
       previewFilename.textContent = file.name || "image.png";
       imagePreviewBar.classList.remove("hidden");
+      scrollToBottom();
     };
     reader.readAsDataURL(file);
   }
@@ -274,7 +325,7 @@
     imagePreviewBar.classList.add("hidden");
   });
 
-  // Drag and Drop
+  // Drag and Drop (Desktop)
   window.addEventListener("dragenter", (e) => {
     if (hasImageFiles(e)) dropOverlay.classList.remove("hidden");
   });
@@ -317,8 +368,17 @@
 
   // Sending Chat or Image
   async function submitChat() {
+    if (state.isSubmitting) return;
+
+    const hasFile = !!state.selectedFile;
+    const text = messageInput.value.trim();
+
+    if (!hasFile && !text) return;
+
+    state.isSubmitting = true;
+
     // 1. If an image is staged, upload it
-    if (state.selectedFile) {
+    if (hasFile) {
       const fileToUpload = state.selectedFile;
       state.selectedFile = null;
       imagePreviewBar.classList.add("hidden");
@@ -343,16 +403,19 @@
     }
 
     // 2. If text was entered, send via WebSocket
-    const text = messageInput.value.trim();
     if (text) {
       if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
-        alert("Not connected to server. Please wait...");
+        alert("Not connected to server. Please wait for reconnection...");
+        state.isSubmitting = false;
         return;
       }
       state.ws.send(JSON.stringify({ type: "chat", text: text }));
       messageInput.value = "";
-      messageInput.style.height = "auto";
+      adjustTextareaHeight();
     }
+
+    state.isSubmitting = false;
+    messageInput.focus();
   }
 
   chatForm.addEventListener("submit", (e) => {
@@ -361,6 +424,7 @@
   });
 
   messageInput.addEventListener("keydown", (e) => {
+    // On desktop Enter sends; on mobile Enter or Send button sends
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       submitChat();
