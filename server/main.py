@@ -190,6 +190,17 @@ async def root():
     return {"status": "ok", "message": "termchat server is running"}
 
 
+@app.get("/health")
+@app.get("/api/health")
+async def health():
+    return {
+        "status": "healthy",
+        "service": "termchat",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "active_clients": len(manager.active_connections),
+    }
+
+
 @app.get("/api/status")
 async def status():
     return {

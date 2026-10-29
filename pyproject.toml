@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "termchat-client"
-version = "0.2.7"
+version = "0.2.8"
 
 description = "Lightweight, non-intrusive terminal chat client connecting to an online chat server with real-time text, images, and AI assistant."
 
@@ -64,6 +64,8 @@ dev = [
 
 [project.scripts]
 termchat = "termchat.cli:main"
+termchat-client = "termchat.cli:main"
+tchat = "termchat.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/your-username/termchat"

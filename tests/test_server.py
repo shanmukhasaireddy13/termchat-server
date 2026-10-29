@@ -21,6 +21,15 @@ def test_server_status_and_static():
     assert r.status_code == 200
     assert "termchat" in r.text
 
+    # Check /health and /api/health
+    r_health = client.get("/health")
+    assert r_health.status_code == 200
+    assert r_health.json()["status"] == "healthy"
+
+    r_api_health = client.get("/api/health")
+    assert r_api_health.status_code == 200
+    assert r_api_health.json()["status"] == "healthy"
+
     # Check /api/status
     r_status = client.get("/api/status")
     assert r_status.status_code == 200
