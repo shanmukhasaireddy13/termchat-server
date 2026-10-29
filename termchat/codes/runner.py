@@ -73,6 +73,11 @@ SCRIPT_MAP = {
     "train_live": "binary_classifier_train_live.py",
     "classifier": "multiclass_classifier.py",
     "multiclass": "multiclass_classifier.py",
+    "yolo": "yolo_classifier.py",
+    "yolo_classifier": "yolo_classifier.py",
+    "yolo_cls": "yolo_classifier.py",
+    "pretrained": "yolo_classifier.py",
+    "pretrained_classifier": "yolo_classifier.py",
 }
 
 
@@ -106,6 +111,7 @@ def list_available():
     print("  termchat run traffic      -> 4-Way Dynamic Adaptive Traffic Controller")
     print("  termchat run distance     -> Ultrasonic HC-SR04 Sonar with Alarm")
     print("  termchat run classifier   -> Multi-Class Machine Learning Suite")
+    print("  termchat run yolo         -> Pretrained YOLO Multi-Class Classifier (rpicam-still)")
 
     print("\n[Arduino Sketches (In 'termchat export-codes')]")
     for f in sorted(ARDUINO_DIR.glob("*.ino")):

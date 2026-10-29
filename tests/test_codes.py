@@ -40,6 +40,7 @@ def test_python_scripts_exist():
         "beetlebot_motion_sequences.py",
         "turtlesim_three_turtles.py",
         "turtlesim_shapes.py",
+        "yolo_classifier.py",
     ]
     for script in expected_scripts:
         p = tc.PYTHON_DIR / script
@@ -82,3 +83,5 @@ def test_runner_aliases():
     assert SCRIPT_MAP["square"] == "beetlebot_motion_sequences.py"
     assert SCRIPT_MAP["stop"] == "beetlebot_motion_sequences.py"
     assert SCRIPT_MAP["teleop"] == "beetlebot_motion_sequences.py"
+    assert SCRIPT_MAP["yolo"] == "yolo_classifier.py"
+    assert SCRIPT_MAP["pretrained"] == "yolo_classifier.py"

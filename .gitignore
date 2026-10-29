@@ -35,3 +35,4 @@ venv.bak/
 .idea/
 server/uploads/*
 !server/uploads/.gitkeep
+*.pt

@@ -21,6 +21,7 @@ termchat/codes/
 │   ├── binary_classifier_dataset.py     # Camera Image Capture for Binary Classes (rpicam-still)
 │   ├── binary_classifier_train_live.py  # MLP Neural Net Training & Live OpenCV Classifier
 │   ├── multiclass_classifier.py         # Generalized Multi-Class Dataset, Training & Live AI
+│   ├── yolo_classifier.py               # Pretrained YOLO Multi-Class Vision Classifier (rpicam-still)
 │   ├── obstacle_avoidance.py      # BeetleBot ROS 2 Jazzy LiDAR Autonomous Avoidance
 │   ├── color_navigation.py        # BeetleBot ROS 2 Jazzy OpenCV Color Card Navigation
 │   ├── arrow_navigation.py        # BeetleBot ROS 2 Jazzy OpenCV Arrow Contour Navigation
@@ -256,6 +257,25 @@ Commands:
 
   # Step 5: Run real-time live webcam / Pi camera inference
   python3 python/multiclass_classifier.py live
+
+-------------------------------------------------------------------------------
+6. Pretrained YOLO Multi-Class Classifier: yolo_classifier.py (rpicam-still)
+-------------------------------------------------------------------------------
+Description:
+  Out-of-the-box pretrained multi-class visual recognition using YOLOv8 nano.
+  Directly captures high-resolution frames using the Raspberry Pi camera subsystem
+  (`rpicam-still -t 10 -o ... --nopreview --width 640 --height 480`) and performs
+  instant object classification across 80 COCO categories (people, vehicles,
+  bottles, cups, chairs, etc.) without requiring custom training.
+
+Execution:
+  termchat run yolo
+  # (or: python3 python/yolo_classifier.py)
+
+Controls:
+  - Press [ENTER] to take a photo, run YOLO, and print detected classes + confidence.
+  - Type 'q' and press [ENTER] to quit cleanly.
+
 
 
 ===============================================================================
