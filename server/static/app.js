@@ -1,16 +1,17 @@
 /**
  * termchat Web Client Application
- * Supports real-time text chat, image uploading, clipboard image pasting (Ctrl+V),
- * drag-and-drop images, presence tracking, and full mobile responsiveness.
+ * Real-time terminal ↔ web chat bridge with image sharing, AI assistance,
+ * onboarding name modal, and dedicated mobile ergonomics.
  */
 
 (() => {
   const state = {
-    username: localStorage.getItem("termchat_web_user") || "WebUser_" + Math.floor(Math.random() * 1000),
+    username: localStorage.getItem("termchat_web_user") || "",
     ws: null,
     selectedFile: null,
     users: [],
     isSubmitting: false,
+    hasJoined: false,
   };
 
   // DOM Elements
@@ -47,30 +48,91 @@
   const headerNickBtn = document.getElementById("headerNickBtn");
   const headerNickname = document.getElementById("headerNickname");
 
+  const joinModal = document.getElementById("joinModal");
+  const joinModalTitle = document.getElementById("joinModalTitle");
+  const joinModalSubtitle = document.getElementById("joinModalSubtitle");
+  const joinForm = document.getElementById("joinForm");
+  const joinNameInput = document.getElementById("joinNameInput");
+  const joinSubmitBtn = document.getElementById("joinSubmitBtn");
+
   const lightboxModal = document.getElementById("lightboxModal");
   const lightboxImg = document.getElementById("lightboxImg");
   const closeLightbox = document.getElementById("closeLightbox");
 
   // Display initial nickname
   function updateDisplayedNicknames(name) {
-    if (displayNickname) displayNickname.textContent = name;
-    if (headerNickname) headerNickname.textContent = name;
+    const cleanName = name || "WebUser";
+    if (displayNickname) displayNickname.textContent = cleanName;
+    if (headerNickname) headerNickname.textContent = cleanName;
   }
-  updateDisplayedNicknames(state.username);
 
-  // Nickname change dialog
-  function promptNicknameChange() {
-    const val = prompt("Enter your display nickname:", state.username);
-    if (val && val.trim() && val.trim() !== state.username) {
-      state.username = val.trim();
-      localStorage.setItem("termchat_web_user", state.username);
-      updateDisplayedNicknames(state.username);
-      if (state.ws) state.ws.close();
+  // Join / Edit Name Modal Dialog
+  function showJoinModal(isEditing = false) {
+    if (!joinModal) return;
+    if (isEditing) {
+      if (joinModalTitle) joinModalTitle.textContent = "Change Display Name";
+      if (joinModalSubtitle) joinModalSubtitle.textContent = "Update your name across connected terminals and web clients.";
+      if (joinSubmitBtn) joinSubmitBtn.textContent = "Save & Update";
+    } else {
+      if (joinModalTitle) joinModalTitle.textContent = "Welcome to termchat";
+      if (joinModalSubtitle) joinModalSubtitle.textContent = "Enter your display name to start chatting with connected terminals and web users.";
+      if (joinSubmitBtn) joinSubmitBtn.textContent = "Join Chat ➜";
     }
+
+    const current = state.username || localStorage.getItem("termchat_web_user") || "";
+    if (joinNameInput) {
+      joinNameInput.value = current.startsWith("WebUser_") ? "" : current;
+      joinNameInput.placeholder = "e.g. Alex, Shanmukha, Bob";
+    }
+
+    joinModal.classList.remove("hidden");
+    setTimeout(() => {
+      if (joinNameInput) {
+        joinNameInput.focus();
+        if (joinNameInput.value) joinNameInput.select();
+      }
+    }, 80);
   }
 
-  if (nicknameBtn) nicknameBtn.addEventListener("click", promptNicknameChange);
-  if (headerNickBtn) headerNickBtn.addEventListener("click", promptNicknameChange);
+  function hideJoinModal() {
+    if (joinModal) joinModal.classList.add("hidden");
+  }
+
+  if (joinForm) {
+    joinForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const val = (joinNameInput ? joinNameInput.value : "").trim();
+      if (!val) {
+        if (joinNameInput) {
+          joinNameInput.classList.add("input-error");
+          joinNameInput.focus();
+          setTimeout(() => joinNameInput.classList.remove("input-error"), 1500);
+        }
+        return;
+      }
+
+      const previousName = state.username;
+      state.username = val;
+      state.hasJoined = true;
+      localStorage.setItem("termchat_web_user", val);
+      updateDisplayedNicknames(val);
+      hideJoinModal();
+
+      if (!state.ws) {
+        connectWs();
+      } else if (previousName !== val) {
+        // Reconnect so server and others receive the updated username
+        state.ws.close();
+      }
+
+      setTimeout(() => {
+        if (messageInput) messageInput.focus();
+      }, 150);
+    });
+  }
+
+  if (nicknameBtn) nicknameBtn.addEventListener("click", () => showJoinModal(true));
+  if (headerNickBtn) headerNickBtn.addEventListener("click", () => showJoinModal(true));
 
   // Mobile Sidebar Toggle & Backdrop
   function setSidebarOpen(open) {
@@ -84,49 +146,35 @@
     }
   }
 
-  usersButton.addEventListener("click", () => setSidebarOpen());
-  closeSidebarBtn.addEventListener("click", () => setSidebarOpen(false));
+  if (usersButton) usersButton.addEventListener("click", () => setSidebarOpen());
+  if (closeSidebarBtn) closeSidebarBtn.addEventListener("click", () => setSidebarOpen(false));
   if (sidebarBackdrop) {
     sidebarBackdrop.addEventListener("click", () => setSidebarOpen(false));
   }
 
   // Textarea auto-resize
   function adjustTextareaHeight() {
+    if (!messageInput) return;
     messageInput.style.height = "auto";
     const newHeight = Math.min(messageInput.scrollHeight, 120);
-    messageInput.style.height = Math.max(newHeight, 24) + "px";
+    messageInput.style.height = Math.max(newHeight, 32) + "px";
   }
 
-  messageInput.addEventListener("input", adjustTextareaHeight);
-
-  // Ensure tapping anywhere on the input form focuses the textarea
-  if (chatForm) {
-    chatForm.addEventListener("click", (e) => {
-      if (!e.target.closest("button") && !e.target.closest("input")) {
-        messageInput.focus();
-      }
-    });
+  if (messageInput) {
+    messageInput.addEventListener("input", adjustTextareaHeight);
   }
 
-  // Exact Viewport Synchronizer for Mobile (Fixes input box going too far down or offscreen)
+  // Viewport Height Synchronizer (Fixes virtual mobile keyboard pushing layout offscreen)
   function syncViewportLayout() {
-    if (!appContainer) return;
-    if (window.visualViewport) {
-      const vh = window.visualViewport.height;
-      const vt = window.visualViewport.offsetTop || 0;
+    const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    document.documentElement.style.setProperty("--app-height", `${vh}px`);
+    if (appContainer) {
       appContainer.style.height = `${vh}px`;
-      appContainer.style.top = `${vt}px`;
-    } else {
-      appContainer.style.height = `${window.innerHeight}px`;
-      appContainer.style.top = '0px';
     }
     scrollToBottom();
   }
 
-  // Run on load, resize, orientation changes, and keyboard popup
   syncViewportLayout();
-  document.addEventListener("DOMContentLoaded", syncViewportLayout);
-  window.addEventListener("load", syncViewportLayout);
   window.addEventListener("resize", syncViewportLayout);
   window.addEventListener("orientationchange", () => setTimeout(syncViewportLayout, 150));
 
@@ -135,24 +183,28 @@
     window.visualViewport.addEventListener("scroll", syncViewportLayout);
   }
 
-  messageInput.addEventListener("focus", () => {
-    setTimeout(syncViewportLayout, 100);
-    setTimeout(syncViewportLayout, 300);
-    setTimeout(scrollToBottom, 350);
-  });
+  if (messageInput) {
+    messageInput.addEventListener("focus", () => {
+      setTimeout(syncViewportLayout, 80);
+      setTimeout(syncViewportLayout, 250);
+      setTimeout(scrollToBottom, 300);
+    });
+  }
 
   // WebSocket Connection
   function getWsUrl() {
     const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = window.location.host;
-    const user = encodeURIComponent(state.username);
+    const user = encodeURIComponent(state.username || "WebUser");
     return `${proto}//${host}/ws?username=${user}&client_type=web&device_info=Web%20Browser`;
   }
 
   function connectWs() {
+    if (!state.username) return;
+
     const url = getWsUrl();
-    statusDot.className = "dot";
-    statusText.textContent = "Connecting...";
+    if (statusDot) statusDot.className = "dot";
+    if (statusText) statusText.textContent = "Connecting...";
 
     try {
       state.ws = new WebSocket(url);
@@ -162,18 +214,18 @@
     }
 
     state.ws.onopen = () => {
-      statusDot.className = "dot connected";
-      statusText.textContent = "Online";
+      if (statusDot) statusDot.className = "dot connected";
+      if (statusText) statusText.textContent = "Online";
     };
 
     state.ws.onclose = () => {
-      statusDot.className = "dot disconnected";
-      statusText.textContent = "Reconnecting...";
+      if (statusDot) statusDot.className = "dot disconnected";
+      if (statusText) statusText.textContent = "Reconnecting...";
       setTimeout(connectWs, 2500);
     };
 
     state.ws.onerror = () => {
-      state.ws.close();
+      if (state.ws) state.ws.close();
     };
 
     state.ws.onmessage = (e) => {
@@ -222,8 +274,8 @@
   function updateUsers(users) {
     state.users = users;
     const total = users.length;
-    onlineCount.textContent = total;
-    sidebarUserCount.textContent = total;
+    if (onlineCount) onlineCount.textContent = total;
+    if (sidebarUserCount) sidebarUserCount.textContent = total;
 
     const terms = users.filter((u) => u.client_type === "terminal");
     const webs = users.filter((u) => u.client_type === "web");
@@ -233,6 +285,7 @@
   }
 
   function renderList(container, list, emptyText) {
+    if (!container) return;
     container.innerHTML = "";
     if (!list.length) {
       container.innerHTML = `<li class="empty-li">${emptyText}</li>`;
@@ -250,6 +303,7 @@
   }
 
   function renderMessage(msg) {
+    if (!messagesList) return;
     const isAi = msg.type === "ai" || msg.client_type === "ai";
     const isMe = msg.sender === state.username && msg.client_type === "web";
     const isTerm = msg.client_type === "terminal";
@@ -261,11 +315,11 @@
     row.className = `msg-row ${originClass} ${isMe ? "is-me" : ""}`;
 
     const time = formatTime(msg.timestamp);
-    let badge = `<span class="msg-badge badge-web">🌐 WEB</span>`;
+    let badge = `<span class="msg-badge badge-web">WEB</span>`;
     if (isAi) {
-      badge = `<span class="msg-badge badge-ai">🤖 AI ASSISTANT</span>`;
+      badge = `<span class="msg-badge badge-ai">AI</span>`;
     } else if (isTerm) {
-      badge = `<span class="msg-badge badge-term">💻 TERMINAL</span>`;
+      badge = `<span class="msg-badge badge-term">TERMINAL</span>`;
     }
 
     let contentHtml = "";
@@ -281,7 +335,6 @@
       `;
     } else {
       let formattedText = escapeHtml(msg.text || "");
-      // Markdown code blocks formatting
       if (formattedText.includes("```")) {
         formattedText = formattedText.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (match, lang, code) => {
           return `<pre><code>${code.trim()}</code></pre>`;
@@ -303,6 +356,7 @@
   }
 
   function renderSystem(msg) {
+    if (!messagesList) return;
     const row = document.createElement("div");
     row.className = "sys-row";
     row.innerHTML = `<div class="sys-pill">⚙️ ${escapeHtml(msg.text || "")}</div>`;
@@ -310,26 +364,32 @@
   }
 
   function scrollToBottom() {
+    if (!messagesList) return;
     requestAnimationFrame(() => {
       messagesList.scrollTop = messagesList.scrollHeight;
     });
   }
 
   // File Upload Handling
-  attachBtn.addEventListener("click", () => fileInput.click());
+  if (attachBtn && fileInput) {
+    attachBtn.addEventListener("click", () => fileInput.click());
+  }
 
-  // Ask AI Button Helper
-  askAiBtn.addEventListener("click", () => {
-    messageInput.value = "/ai ";
-    messageInput.focus();
-    adjustTextareaHeight();
-  });
+  if (askAiBtn && messageInput) {
+    askAiBtn.addEventListener("click", () => {
+      messageInput.value = "/ai ";
+      messageInput.focus();
+      adjustTextareaHeight();
+    });
+  }
 
-  fileInput.addEventListener("change", (e) => {
-    if (e.target.files && e.target.files[0]) {
-      handleSelectedImage(e.target.files[0]);
-    }
-  });
+  if (fileInput) {
+    fileInput.addEventListener("change", (e) => {
+      if (e.target.files && e.target.files[0]) {
+        handleSelectedImage(e.target.files[0]);
+      }
+    });
+  }
 
   function handleSelectedImage(file) {
     if (!file.type.startsWith("image/")) {
@@ -339,67 +399,73 @@
     state.selectedFile = file;
     const reader = new FileReader();
     reader.onload = (e) => {
-      previewImg.src = e.target.result;
-      previewFilename.textContent = file.name || "image.png";
-      imagePreviewBar.classList.remove("hidden");
+      if (previewImg) previewImg.src = e.target.result;
+      if (previewFilename) previewFilename.textContent = file.name || "image.png";
+      if (imagePreviewBar) imagePreviewBar.classList.remove("hidden");
       scrollToBottom();
     };
     reader.readAsDataURL(file);
   }
 
-  cancelUploadBtn.addEventListener("click", () => {
-    state.selectedFile = null;
-    fileInput.value = "";
-    imagePreviewBar.classList.add("hidden");
-  });
+  if (cancelUploadBtn) {
+    cancelUploadBtn.addEventListener("click", () => {
+      state.selectedFile = null;
+      if (fileInput) fileInput.value = "";
+      if (imagePreviewBar) imagePreviewBar.classList.add("hidden");
+    });
+  }
 
   // Drag and Drop (Desktop)
   window.addEventListener("dragenter", (e) => {
-    if (hasImageFiles(e)) dropOverlay.classList.remove("hidden");
+    if (hasImageFiles(e) && dropOverlay) dropOverlay.classList.remove("hidden");
   });
 
-  window.addEventListener("dragleave", (e) => {
-    if (e.relatedTarget === null) dropOverlay.classList.add("hidden");
-  });
-
-  window.addEventListener("dragover", (e) => e.preventDefault());
-
-  window.addEventListener("drop", (e) => {
+  window.addEventListener("dragover", (e) => {
     e.preventDefault();
-    dropOverlay.classList.add("hidden");
-    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleSelectedImage(e.dataTransfer.files[0]);
-    }
   });
+
+  if (dropOverlay) {
+    dropOverlay.addEventListener("dragleave", (e) => {
+      if (e.relatedTarget === null || !dropOverlay.contains(e.relatedTarget)) {
+        dropOverlay.classList.add("hidden");
+      }
+    });
+
+    dropOverlay.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropOverlay.classList.add("hidden");
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+        handleSelectedImage(e.dataTransfer.files[0]);
+      }
+    });
+  }
 
   function hasImageFiles(e) {
     if (!e.dataTransfer || !e.dataTransfer.types) return false;
-    return e.dataTransfer.types.includes("Files");
+    return Array.from(e.dataTransfer.types).includes("Files");
   }
 
-  // Clipboard Paste (Ctrl+V) for screenshots & images
+  // Clipboard Paste Support (Ctrl+V / Cmd+V)
   window.addEventListener("paste", (e) => {
-    const items = e.clipboardData ? e.clipboardData.items : null;
+    const items = (e.clipboardData || e.originalEvent.clipboardData).items;
     if (!items) return;
 
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.indexOf("image") !== -1) {
-        const file = items[i].getAsFile();
-        if (file) {
-          handleSelectedImage(file);
-          e.preventDefault();
-          break;
-        }
+        const blob = items[i].getAsFile();
+        const file = new File([blob], `clipboard-${Date.now()}.png`, { type: blob.type });
+        handleSelectedImage(file);
+        break;
       }
     }
   });
 
-  // Sending Chat or Image
+  // Sending Messages
   async function submitChat() {
     if (state.isSubmitting) return;
 
     const hasFile = !!state.selectedFile;
-    const text = messageInput.value.trim();
+    const text = messageInput ? messageInput.value.trim() : "";
 
     if (!hasFile && !text) return;
 
@@ -409,8 +475,8 @@
     if (hasFile) {
       const fileToUpload = state.selectedFile;
       state.selectedFile = null;
-      imagePreviewBar.classList.add("hidden");
-      fileInput.value = "";
+      if (imagePreviewBar) imagePreviewBar.classList.add("hidden");
+      if (fileInput) fileInput.value = "";
 
       const formData = new FormData();
       formData.append("file", fileToUpload);
@@ -438,37 +504,46 @@
         return;
       }
       state.ws.send(JSON.stringify({ type: "chat", text: text }));
-      messageInput.value = "";
-      adjustTextareaHeight();
+      if (messageInput) {
+        messageInput.value = "";
+        adjustTextareaHeight();
+      }
     }
 
     state.isSubmitting = false;
-    messageInput.focus();
+    if (messageInput) messageInput.focus();
   }
 
-  chatForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    submitChat();
-  });
-
-  messageInput.addEventListener("keydown", (e) => {
-    // On desktop Enter sends; on mobile Enter or Send button sends
-    if (e.key === "Enter" && !e.shiftKey) {
+  if (chatForm) {
+    chatForm.addEventListener("submit", (e) => {
       e.preventDefault();
       submitChat();
-    }
-  });
+    });
+  }
+
+  if (messageInput) {
+    messageInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        submitChat();
+      }
+    });
+  }
 
   // Lightbox
   window.viewLightbox = (url) => {
-    lightboxImg.src = url;
-    lightboxModal.classList.remove("hidden");
+    if (lightboxImg && lightboxModal) {
+      lightboxImg.src = url;
+      lightboxModal.classList.remove("hidden");
+    }
   };
 
-  closeLightbox.addEventListener("click", () => lightboxModal.classList.add("hidden"));
-  lightboxModal.addEventListener("click", (e) => {
-    if (e.target === lightboxModal) lightboxModal.classList.add("hidden");
-  });
+  if (closeLightbox && lightboxModal) {
+    closeLightbox.addEventListener("click", () => lightboxModal.classList.add("hidden"));
+    lightboxModal.addEventListener("click", (e) => {
+      if (e.target === lightboxModal) lightboxModal.classList.add("hidden");
+    });
+  }
 
   // Helpers
   function escapeHtml(s) {
@@ -486,5 +561,6 @@
     }
   }
 
-  connectWs();
+  // Startup: Ask name before entering chat
+  showJoinModal(false);
 })();

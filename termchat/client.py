@@ -66,18 +66,20 @@ class TerminalClient:
         client_type = msg.get("client_type", "web")
         text = msg.get("text", "")
 
-        badge = "[🌐 Web]" if client_type == "web" else "[💻 Terminal]"
+        badge = "[Web]" if client_type == "web" else "[Terminal]"
         print(f"\n{badge} {sender}: {text}")
 
     def handle_incoming_image(self, msg: dict):
         sender = msg.get("sender", "Unknown")
+        client_type = msg.get("client_type", "web")
         rel_url = msg.get("image_url", "")
         filename = msg.get("filename", "image.png")
 
         # Construct full URL
         full_url = f"{self.http_base_url}{rel_url}"
 
-        print(f"\n[🌐 Web] {sender} 📷 Sent an image: {filename}")
+        badge = "[Web]" if client_type == "web" else "[Terminal]"
+        print(f"\n{badge} {sender} Sent an image: {filename}")
         print(f"  URL: {full_url}")
 
         # Download locally

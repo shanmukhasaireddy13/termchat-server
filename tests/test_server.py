@@ -20,6 +20,8 @@ def test_server_status_and_static():
     r = client.get("/")
     assert r.status_code == 200
     assert "termchat" in r.text
+    assert "joinModal" in r.text
+    assert "mobile-welcome-banner" in r.text
 
     # Check /health and /api/health
     r_health = client.get("/health")

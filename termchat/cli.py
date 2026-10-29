@@ -146,7 +146,25 @@ def main():
         fallback_url = fallback_srv
 
     # Determine username
-    username = args.name or get_saved_username()
+    username = args.name
+    if not username:
+        default_name = get_saved_username()
+        if sys.stdin and sys.stdin.isatty():
+            try:
+                print("\n===============================")
+                print("       Welcome to termchat     ")
+                print("===============================")
+                entered = input(f"Enter your display name [{default_name}]: ").strip()
+                if entered:
+                    username = entered
+                    set_saved_username(username)
+                else:
+                    username = default_name
+            except (KeyboardInterrupt, EOFError):
+                print("\nExited.")
+                sys.exit(0)
+        else:
+            username = default_name
 
     start(
         server_url=server_url,

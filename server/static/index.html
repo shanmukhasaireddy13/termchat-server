@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
   <title>termchat — Web to Terminal Bridge</title>
   <link rel="stylesheet" href="/static/style.css" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%20width=%22100%22%20height=%22100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%200%20100%20100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
 </head>
 <body>
   <div id="app" class="app-container">
@@ -22,7 +22,7 @@
       </div>
 
       <div class="header-right">
-        <!-- Nickname pill in header for fast mobile editing -->
+        <!-- Nickname pill in header for fast mobile name editing -->
         <button type="button" class="header-nick-btn" id="headerNickBtn" title="Change your display name">
           <span class="nick-dot"></span>
           <span id="headerNickname">WebUser</span>
@@ -57,7 +57,7 @@
           </ul>
         </div>
         <div class="users-group">
-          <div class="group-label">🌐 Web Clients</div>
+          <div class="group-label">Web Clients</div>
           <ul id="webList" class="user-ul">
             <li class="empty-li">No web users connected</li>
           </ul>
@@ -76,10 +76,17 @@
         </div>
 
         <div class="messages-list" id="messagesList">
-          <div class="info-card">
+          <!-- Desktop Info Card -->
+          <div class="info-card desktop-only">
             <div class="info-icon">⚡</div>
             <h3>Online Terminal & Web Chat Bridge</h3>
             <p>Messages typed in connected terminals (Linux, Raspberry Pi, Windows, macOS) appear here in real time. Send text responses or <strong>upload / paste images</strong> below to transmit them directly into their terminals!</p>
+          </div>
+
+          <!-- Mobile Minimal Welcome Banner -->
+          <div class="mobile-welcome-banner mobile-only">
+            <span class="mobile-live-dot"></span>
+            <span>Live Terminal Bridge • Send text or images below</span>
           </div>
         </div>
 
@@ -96,8 +103,8 @@
         <!-- INPUT FORM -->
         <div class="input-container">
           <form id="chatForm" class="input-form" onsubmit="return false;">
-            <!-- User Nickname Tag (visible on desktop, compact on mobile) -->
-            <button type="button" class="nickname-btn" id="nicknameBtn" title="Click to change your display name">
+            <!-- User Nickname Tag (visible on desktop) -->
+            <button type="button" class="nickname-btn desktop-only" id="nicknameBtn" title="Click to change your display name">
               <span class="nick-dot"></span>
               <span id="displayNickname">WebUser</span>
             </button>
@@ -138,6 +145,33 @@
           </form>
         </div>
       </main>
+    </div>
+
+    <!-- JOIN NAME ONBOARDING MODAL -->
+    <div class="modal-overlay hidden" id="joinModal">
+      <div class="join-card">
+        <div class="join-icon">
+          <span>&gt;_</span>
+        </div>
+        <h2 id="joinModalTitle">Welcome to termchat</h2>
+        <p id="joinModalSubtitle">Enter your display name to start chatting with connected terminals and web users.</p>
+        <form id="joinForm" class="join-form" onsubmit="return false;">
+          <div class="join-input-group">
+            <span class="join-at-icon">@</span>
+            <input
+              type="text"
+              id="joinNameInput"
+              placeholder="Your name..."
+              maxlength="24"
+              autocomplete="nickname"
+              required
+            />
+          </div>
+          <button type="submit" id="joinSubmitBtn" class="join-submit-btn">
+            Join Chat ➜
+          </button>
+        </form>
+      </div>
     </div>
 
     <!-- LIGHTBOX MODAL FOR IMAGES -->
