@@ -41,3 +41,11 @@ def test_normalize_urls_with_trailing_slash_or_ws():
     ws_url, http_base = normalize_urls("https://chat.example.com/ws/")
     assert ws_url == "wss://chat.example.com/ws"
     assert http_base == "https://chat.example.com"
+
+
+def test_localhost_filter(monkeypatch):
+    monkeypatch.delenv("TERMCHAT_SERVER", raising=False)
+    monkeypatch.setattr("termchat.config.load_config", lambda: {"server": "http://localhost:8000/"})
+    primary, fallback = get_default_servers()
+    assert primary == PRIMARY_DEFAULT_SERVER
+    assert fallback == FALLBACK_DEFAULT_SERVER

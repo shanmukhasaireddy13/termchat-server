@@ -39,20 +39,22 @@ def save_config(config: Dict[str, str]):
 def get_default_servers() -> Tuple[str, Optional[str]]:
     """
     Returns (primary_server, fallback_server).
-    If custom server is configured via ENV or ~/.termchat.json, returns (custom, None).
-    Otherwise returns (PRIMARY_DEFAULT_SERVER, FALLBACK_DEFAULT_SERVER).
+    Defaults to the live cloud server (https://termchat.cliy.me) with Render fallback.
+    Ignores stale local entries (localhost/127.0.0.1) in ~/.termchat.json unless passed explicitly via CLI flag.
     """
     # 1. Environment variable takes highest priority
     env_url = os.environ.get("TERMCHAT_SERVER")
     if env_url:
-        return env_url.strip(), None
+        return env_url.strip(), PRIMARY_DEFAULT_SERVER
 
     # 2. Config file
     cfg = load_config()
-    if "server" in cfg and cfg["server"]:
-        return cfg["server"].strip(), None
+    saved = cfg.get("server", "").strip() if cfg else ""
+    # Filter out stale localhost entries from previous local debugging
+    if saved and not any(h in saved.lower() for h in ("localhost", "127.0.0.1")):
+        return saved, PRIMARY_DEFAULT_SERVER
 
-    # 3. Default primary custom domain with Render Singapore fallback
+    # 3. Default primary custom domain with Render fallback
     return PRIMARY_DEFAULT_SERVER, FALLBACK_DEFAULT_SERVER
 
 
