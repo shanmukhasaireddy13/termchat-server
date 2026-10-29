@@ -99,18 +99,46 @@
 
   messageInput.addEventListener("input", adjustTextareaHeight);
 
-  // Mobile Visual Viewport Handling (Fixes virtual keyboard hiding input bar)
-  if (window.visualViewport && appContainer) {
-    const handleViewportChange = () => {
-      appContainer.style.height = `${window.visualViewport.height}px`;
-      scrollToBottom();
-    };
-    window.visualViewport.addEventListener("resize", handleViewportChange);
-    window.visualViewport.addEventListener("scroll", handleViewportChange);
+  // Ensure tapping anywhere on the input form focuses the textarea
+  if (chatForm) {
+    chatForm.addEventListener("click", (e) => {
+      if (!e.target.closest("button") && !e.target.closest("input")) {
+        messageInput.focus();
+      }
+    });
+  }
+
+  // Exact Viewport Synchronizer for Mobile (Fixes input box going too far down or offscreen)
+  function syncViewportLayout() {
+    if (!appContainer) return;
+    if (window.visualViewport) {
+      const vh = window.visualViewport.height;
+      const vt = window.visualViewport.offsetTop || 0;
+      appContainer.style.height = `${vh}px`;
+      appContainer.style.top = `${vt}px`;
+    } else {
+      appContainer.style.height = `${window.innerHeight}px`;
+      appContainer.style.top = '0px';
+    }
+    scrollToBottom();
+  }
+
+  // Run on load, resize, orientation changes, and keyboard popup
+  syncViewportLayout();
+  document.addEventListener("DOMContentLoaded", syncViewportLayout);
+  window.addEventListener("load", syncViewportLayout);
+  window.addEventListener("resize", syncViewportLayout);
+  window.addEventListener("orientationchange", () => setTimeout(syncViewportLayout, 150));
+
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", syncViewportLayout);
+    window.visualViewport.addEventListener("scroll", syncViewportLayout);
   }
 
   messageInput.addEventListener("focus", () => {
-    setTimeout(scrollToBottom, 200);
+    setTimeout(syncViewportLayout, 100);
+    setTimeout(syncViewportLayout, 300);
+    setTimeout(scrollToBottom, 350);
   });
 
   // WebSocket Connection
