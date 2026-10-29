@@ -86,9 +86,45 @@ def main():
         print(f"[OK] AI API key saved to ~/.termchat.json")
         sys.exit(0)
 
-    # Handle direct one-shot CLI AI query: `termchat ai "my question"`
+    # Handle direct one-shot CLI commands: `termchat run ...`, `termchat setup-lyra`, `termchat export-codes`, etc.
     if args.ai_prompt:
         prompt_words = list(args.ai_prompt)
+        first_word = prompt_words[0].lower() if prompt_words else ""
+
+        if first_word == "run":
+            from termchat.codes.runner import run_script, list_available
+            if len(prompt_words) < 2 or prompt_words[1].lower() in ("list", "-h", "--help"):
+                list_available()
+                sys.exit(0)
+            sys.exit(run_script(prompt_words[1], prompt_words[2:]))
+
+        elif first_word in ("setup-lyra", "setup_lyra", "install-lyra"):
+            from termchat.codes.runner import setup_lyra_workspace
+            sys.exit(setup_lyra_workspace())
+
+        elif first_word in ("export-codes", "export"):
+            from termchat.codes.runner import export_codes
+            dest = prompt_words[1] if len(prompt_words) > 1 else None
+            sys.exit(export_codes(dest))
+
+        elif first_word in ("codes", "list-codes"):
+            from termchat.codes.runner import run_script, list_available, setup_lyra_workspace, export_codes
+            sub_args = prompt_words[1:]
+            if not sub_args or sub_args[0].lower() in ("list", "-h", "--help"):
+                list_available()
+                sys.exit(0)
+            sub_cmd = sub_args[0].lower()
+            if sub_cmd == "run" and len(sub_args) > 1:
+                sys.exit(run_script(sub_args[1], sub_args[2:]))
+            elif sub_cmd in ("setup-lyra", "setup_lyra"):
+                sys.exit(setup_lyra_workspace())
+            elif sub_cmd in ("export", "export-codes"):
+                dest = sub_args[1] if len(sub_args) > 1 else None
+                sys.exit(export_codes(dest))
+            else:
+                sys.exit(run_script(sub_cmd, sub_args[1:]))
+
+        # Handle direct one-shot CLI AI query: `termchat ai "my question"`
         if prompt_words and prompt_words[0].lower() in ("ai", "ask"):
             prompt_words = prompt_words[1:]
         question = " ".join(prompt_words).strip()

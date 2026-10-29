@@ -26,46 +26,91 @@ Objective:
   continuously monitors distances in left, front, and right sectors, and executes
   an intelligent "reverse-before-turn" maneuver when facing dead ends.
 
-Step 1: Network Connectivity
-  Connect your workstation/laptop and the BeetleBot to the same local WiFi network.
-  Test communication with the robot:
-    ping 192.168.0.128
+-------------------------------------------------------------------------------
+TERMINAL 1: BRING UP THE ROBOT HARDWARE AND LIDAR
+-------------------------------------------------------------------------------
+1. Connect laptop and BeetleBot to the same WiFi network and verify:
+     ping beetlebot-124.local (or ping 192.168.0.128)
 
-  Once the robot responds, establish an SSH session:
-    ssh veerobot@192.168.0.128
-    (Password: veerobot or as configured)
+2. Open Terminal 1 on your PC and SSH into the robot:
+     ssh veerobot@beetlebot-124.local
 
-Step 2: Source ROS 2 Environment and Launch Robot Base & LiDAR
-  In Terminal 1 on the BeetleBot:
-    source /opt/ros/jazzy/setup.bash
-    source /home/veerobot/lyra_ws/install/setup.bash
-    ros2 launch lyra_bringup robot.launch.py
+3. Source environments and launch main robot driver and laser system:
+     source /opt/ros/jazzy/setup.bash
+     source ~/lyra_ws/install/setup.bash
+     ros2 launch lyra_bringup robot.launch.py
 
-  Note: Keep this terminal open! It publishes:
-    - /scan (sensor_msgs/msg/LaserScan from RPLidar)
-    - /odom (nav_msgs/msg/Odometry from wheel encoders)
-    - /tf and /tf_static (Transform trees)
-    - Subscribes to /cmd_vel_nav (geometry_msgs/msg/Twist)
+   (Optional launch variants depending on your lab setup:)
+     ros2 launch lyra_bringup robot.launch.py camera:=true
+     ros2 launch lyra_bringup robot.launch.py mode:=slam camera:=true imu:=true
 
-Step 3: Arm the Robot
-  Open Terminal 2 on the BeetleBot:
-    ssh veerobot@192.168.0.128
-    source /opt/ros/jazzy/setup.bash
-    source /home/veerobot/lyra_ws/install/setup.bash
-    ros2 service call /lyra/arm std_srvs/srv/Trigger
+* Keep Terminal 1 running in the background to handle the robot hardware!
 
-  Verify response returns success: True.
+-------------------------------------------------------------------------------
+TERMINAL 2: LAUNCH AUTONOMOUS DRIVING (CHOOSE METHOD A, B, OR C)
+-------------------------------------------------------------------------------
+Open a SECOND terminal window on your PC and SSH into the robot:
+  ssh veerobot@beetlebot-124.local
 
-Step 4: Manual Sanity Check (Optional but Recommended)
-  Test forward drive:
-    ros2 topic pub --once /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.2, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+Prerequisite:
+  Ensure termchat-client is installed on the robot:
+    pip install --upgrade termchat-client --break-system-packages
 
-  Or launch keyboard teleoperation:
-    ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r cmd_vel:=cmd_vel_nav
+-------------------------------------------------------------------------------
+METHOD A: THE 1-COMMAND ZERO-EFFORT METHOD (RECOMMENDED)
+-------------------------------------------------------------------------------
+No opening nano, no holding Ctrl+K, no pasting, no colcon build!
+Just run:
+  termchat run obstacle
 
-Step 5: Configure and Run Obstacle Avoidance
-  Run the autonomous Python node:
-    python3 python/obstacle_avoidance.py
+Or if you prefer python module syntax:
+  source /opt/ros/jazzy/setup.bash
+  python3 -m termchat.codes run obstacle
+
+What happens:
+  - The exact Obstacle Avoidance node launches immediately.
+  - Subscribes to /scan and publishes velocity commands to /cmd_vel_nav.
+  - Implements front/left/right sector calculation, obstacle warnings,
+    and automatic reverse-before-turn maneuvers.
+  - Press [Ctrl + C] to safely halt all wheels and stop the node.
+
+-------------------------------------------------------------------------------
+METHOD B: 1-CLICK AUTOMATED WORKSPACE SETUP (FOR MADAM INSPECTION)
+-------------------------------------------------------------------------------
+If your lab instructor / madam requires the code to live specifically inside
+`~/lyra_ws/src/lyra_control/lyra_control/obstacle_avoidance.py` and wants you
+to run `ros2 run lyra_control obstacle_avoid`:
+
+DO NOT spend time manually opening nano, deleting code, and editing setup.py!
+Just run this one automated command:
+  termchat setup-lyra
+
+This automated command instantly:
+  1. Copies obstacle_avoidance.py directly into ~/lyra_ws/src/lyra_control/lyra_control/
+  2. Sets executable permissions (chmod +x)
+  3. Registers the console_scripts entry point ('obstacle_avoid = ...') in setup.py
+  4. Runs colcon build --packages-select lyra_control automatically!
+
+Then you (or your madam) can simply execute:
+  source ~/lyra_ws/install/setup.bash
+  ros2 run lyra_control obstacle_avoid
+  (or run: python3 ~/lyra_ws/src/lyra_control/lyra_control/obstacle_avoidance.py)
+
+-------------------------------------------------------------------------------
+METHOD C: MANUAL NANO PASTE & BUILD (MADAM'S MANUAL PROTOCOL)
+-------------------------------------------------------------------------------
+If you want to perform the manual steps manually:
+  1. cd ~/lyra_ws/src/lyra_control/lyra_control/
+  2. nano obstacle_avoidance.py
+     (Hold Ctrl + K until completely empty, paste code from termchat/codes/python/obstacle_avoidance.py, Ctrl+O, Enter, Ctrl+X)
+  3. chmod +x obstacle_avoidance.py
+  4. nano ~/lyra_ws/src/lyra_control/setup.py
+     Add under 'console_scripts':
+       'obstacle_avoid = lyra_control.obstacle_avoidance:main',
+  5. cd ~/lyra_ws
+     colcon build --packages-select lyra_control
+     source install/setup.bash
+  6. ros2 run lyra_control obstacle_avoid
 
   Key Parameters Configured in the Script:
     - safe_distance  = 0.50 m  (General clearance boundary)
