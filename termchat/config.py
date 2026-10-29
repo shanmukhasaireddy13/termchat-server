@@ -10,7 +10,8 @@ from pathlib import Path
 from typing import Dict, Optional
 
 CONFIG_FILE = Path.home() / ".termchat.json"
-DEFAULT_FALLBACK_SERVER = "http://localhost:8000"
+DEFAULT_FALLBACK_SERVER = "https://termchat-live.onrender.com"
+
 
 
 def load_config() -> Dict[str, str]:

@@ -60,21 +60,41 @@ pip install termchat-client
 
 ---
 
+## 🚀 Quickstart (Zero-Config)
+
+Because the client comes pre-configured with the live server hosted in Singapore (`https://termchat-live.onrender.com`), you can chat immediately:
+
+```bash
+pip install --upgrade termchat-client
+termchat
+```
+
+Or ask the free AI assistant right away:
+```bash
+termchat ai "What is the difference between a process and a thread?"
+```
+
+---
+
 ## 🚀 Terminal Client Usage
 
 ### 1. Run via CLI
 ```bash
-termchat --server https://my-chat.onrender.com --name Alice
+termchat --name Alice
+```
+Or specify a custom server if self-hosting:
+```bash
+termchat --server https://termchat-live.onrender.com --name Alice
 ```
 Or via Python module:
 ```bash
-python -m termchat --server https://my-chat.onrender.com --name Alice
+python -m termchat --name Alice
 ```
 
-### 2. Save Your Server Once
-Save your online server URL so you never need to type it again:
+### 2. Save Your Preferences Once
+Save your online server URL or default name so you never need to type them again:
 ```bash
-termchat --set-server https://my-chat.onrender.com
+termchat --set-server https://termchat-live.onrender.com
 termchat --set-name Alice
 ```
 Once saved, simply run:
