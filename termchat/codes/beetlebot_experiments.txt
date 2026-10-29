@@ -1,0 +1,258 @@
+===============================================================================
+                     BEETLEBOT AUTONOMOUS ROBOTICS MANUAL
+           ROS 2 Jazzy / Lyra Platform — Experiments 1, 2, and 3
+===============================================================================
+
+This document is the dedicated operational guide for conducting the three
+autonomous robotics experiments on the BeetleBot (Lyra mobile robot platform)
+powered by ROS 2 Jazzy.
+
+-------------------------------------------------------------------------------
+TABLE OF CONTENTS
+-------------------------------------------------------------------------------
+1. EXPERIMENT 1: 2D LiDAR Autonomous Obstacle Avoidance (obstacle_avoidance.py)
+2. EXPERIMENT 2: Vision-Based Autonomous Navigation (color_navigation.py & arrow_navigation.py)
+3. EXPERIMENT 3: Autonomous 2D LiDAR SLAM, Frontier Exploration & Landmark Mapping (beetle_slam_mapper.py)
+4. EMERGENCY STOP & DISARM PROCEDURES
+
+===============================================================================
+EXPERIMENT 1: 2D LiDAR AUTONOMOUS OBSTACLE AVOIDANCE
+===============================================================================
+File: termchat/codes/python/obstacle_avoidance.py
+
+Objective:
+  Implement autonomous reactive obstacle avoidance using a 360-degree 2D LiDAR
+  sensor (RPLidar S1) on ROS 2 Jazzy. The robot navigates unknown environments,
+  continuously monitors distances in left, front, and right sectors, and executes
+  an intelligent "reverse-before-turn" maneuver when facing dead ends.
+
+Step 1: Network Connectivity
+  Connect your workstation/laptop and the BeetleBot to the same local WiFi network.
+  Test communication with the robot:
+    ping 192.168.0.128
+
+  Once the robot responds, establish an SSH session:
+    ssh veerobot@192.168.0.128
+    (Password: veerobot or as configured)
+
+Step 2: Source ROS 2 Environment and Launch Robot Base & LiDAR
+  In Terminal 1 on the BeetleBot:
+    source /opt/ros/jazzy/setup.bash
+    source /home/veerobot/lyra_ws/install/setup.bash
+    ros2 launch lyra_bringup robot.launch.py
+
+  Note: Keep this terminal open! It publishes:
+    - /scan (sensor_msgs/msg/LaserScan from RPLidar)
+    - /odom (nav_msgs/msg/Odometry from wheel encoders)
+    - /tf and /tf_static (Transform trees)
+    - Subscribes to /cmd_vel_nav (geometry_msgs/msg/Twist)
+
+Step 3: Arm the Robot
+  Open Terminal 2 on the BeetleBot:
+    ssh veerobot@192.168.0.128
+    source /opt/ros/jazzy/setup.bash
+    source /home/veerobot/lyra_ws/install/setup.bash
+    ros2 service call /lyra/arm std_srvs/srv/Trigger
+
+  Verify response returns success: True.
+
+Step 4: Manual Sanity Check (Optional but Recommended)
+  Test forward drive:
+    ros2 topic pub --once /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.2, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+
+  Or launch keyboard teleoperation:
+    ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r cmd_vel:=cmd_vel_nav
+
+Step 5: Configure and Run Obstacle Avoidance
+  Run the autonomous Python node:
+    python3 python/obstacle_avoidance.py
+
+  Key Parameters Configured in the Script:
+    - safe_distance  = 0.50 m  (General clearance boundary)
+    - front_distance = 0.45 m  (Direct frontal collision threshold)
+    - move_speed     = 0.20 m/s (Nominal cruising velocity)
+    - reverse_speed  = 0.12 m/s (Back-up escape speed)
+    - turn_speed     = 0.40 rad/s (Yaw rotation speed)
+    - reverse_time   = 0.80 s  (Duration of backing up before turning)
+
+State Machine Behavior:
+  1. Front clear (> 0.45 m) and sides clear (> 0.50 m):
+     -> Drive straight forward at move_speed.
+  2. Front partially constrained:
+     -> Compare left distance vs right distance. Turn toward the side with greater clearance.
+  3. Front obstacle detected (<= 0.45 m):
+     -> Reverse for 0.8 seconds at reverse_speed.
+     -> Re-evaluate left vs right LiDAR ranges.
+     -> Turn toward the clearer direction until front is clear.
+
+Stopping & Disarming:
+  Press Ctrl + C in the Python node terminal. The node automatically sends zero-velocity
+  messages to /cmd_vel_nav before exiting.
+  Disarm:
+    ros2 service call /lyra/disarm std_srvs/srv/Trigger
+
+
+===============================================================================
+EXPERIMENT 2: VISION-BASED AUTONOMOUS NAVIGATION
+===============================================================================
+Files:
+  - termchat/codes/python/color_navigation.py
+  - termchat/codes/python/arrow_navigation.py
+
+Objective:
+  Drive the BeetleBot using real-time computer vision processing through the onboard
+  monocular camera, responding dynamically to color signboards and directional arrows.
+
+Step 1: Connect & Prepare System
+  Verify connectivity:
+    ping 192.168.0.122
+    ssh veerobot@192.168.0.122
+
+  Ensure dependencies are installed on BeetleBot / companion computer:
+    sudo apt update
+    sudo apt install -y python3-opencv python3-numpy ros-jazzy-geometry-msgs
+
+Step 2: Launch Robot Base
+  Terminal 1:
+    source /opt/ros/jazzy/setup.bash
+    source /home/veerobot/lyra_ws/install/setup.bash
+    ros2 launch lyra_bringup robot.launch.py
+
+  Terminal 2 (Arm Robot):
+    source /opt/ros/jazzy/setup.bash
+    source /home/veerobot/lyra_ws/install/setup.bash
+    ros2 service call /lyra/arm std_srvs/srv/Trigger
+
+-------------------------------------------------------------------------------
+PART 2A: COLOR CARD NAVIGATION (color_navigation.py)
+-------------------------------------------------------------------------------
+Description:
+  Uses HSV color segmentation and morphological filtering to detect Green, Yellow,
+  and Red navigation cards held in front of the camera:
+    - GREEN Card  -> Robot advances forward (linear: 0.20 m/s)
+    - YELLOW Card -> Robot slows down to caution speed (linear: 0.08 m/s)
+    - RED Card    -> Robot halts immediately (linear: 0.0 m/s, angular: 0.0 rad/s)
+    - NO Card     -> Robot remains stopped for safety
+
+Execution:
+  python3 python/color_navigation.py
+
+  An OpenCV visualization window displays the camera stream with segmented color contours
+  and active navigation states. Press 'q' in the camera window to exit.
+
+-------------------------------------------------------------------------------
+PART 2B: ARROW DIRECTION NAVIGATION (arrow_navigation.py)
+-------------------------------------------------------------------------------
+Description:
+  Detects directional arrows (black arrow on white background or colored arrows)
+  using OpenCV contour approximation, vertex counting, and centroid-to-tip vector analysis:
+    - LEFT Arrow Detected  -> Robot turns left (angular.z = +0.50 rad/s)
+    - RIGHT Arrow Detected -> Robot turns right (angular.z = -0.50 rad/s)
+    - VERTICAL / Ambiguous -> Robot halts (linear: 0.0 m/s, angular: 0.0 rad/s)
+
+Execution:
+  python3 python/arrow_navigation.py
+
+  Press 'q' in the preview window to exit.
+
+Monitoring Commands in Real Time:
+  Open an additional terminal to observe velocity commands dispatched to the motors:
+    source /opt/ros/jazzy/setup.bash
+    ros2 topic echo /cmd_vel_nav
+
+
+===============================================================================
+EXPERIMENT 3: 2D LiDAR SLAM, FRONTIER EXPLORATION & LANDMARK MAPPING
+===============================================================================
+File: termchat/codes/python/beetle_slam_mapper.py
+
+Objective:
+  Complete end-to-end autonomous Simultaneous Localization and Mapping (SLAM)
+  in ROS 2 Jazzy. The BeetleBot autonomously charts an unknown laboratory floorplan,
+  utilizes frontier-based exploration to systematically visit unmapped boundaries,
+  incorporates camera vision for floor obstacles and ArUco visual fiducial landmarks,
+  and persists the resulting occupancy grid map to disk.
+
+Architecture:
+  - 2D LiDAR: 360-degree RPLidar scans published to /scan.
+  - Odometry & TF: /odom frame to /base_link with wheel encoder feedback.
+  - SLAM Engine: slam_toolbox / cartographer producing /map topic.
+  - Autonomous Planner: Frontier detection (wavefront edge clustering) calculating
+    optimal exploration waypoints and navigating safely without human intervention.
+  - Camera Vision: Monocular camera (/camera/image_raw) segmenting floor navigable area
+    and detecting ArUco landmark markers for pose graph enhancement.
+
+Step 1: Network & Robot Bringup with SLAM Mode
+  In Terminal 1 on BeetleBot:
+    source /opt/ros/jazzy/setup.bash
+    source /home/veerobot/lyra_ws/install/setup.bash
+    ros2 launch lyra_bringup robot.launch.py mode:=slam camera:=true imu:=true
+
+Step 2: Arm the Robot
+  In Terminal 2:
+    source /opt/ros/jazzy/setup.bash
+    source /home/veerobot/lyra_ws/install/setup.bash
+    ros2 service call /lyra/arm std_srvs/srv/Trigger
+
+Step 3: Launch RViz2 Visualization (on Workstation / Laptop)
+  Export ROS_DOMAIN_ID matching the robot (default 0):
+    source /opt/ros/jazzy/setup.bash
+    rviz2 -d /home/veerobot/lyra_ws/src/lyra_description/rviz/slam.rviz
+
+  Displays:
+    - Occupancy Grid Map (/map)
+    - LaserScan point cloud (/scan)
+    - Robot model & TF frames (map -> odom -> base_link -> laser)
+    - Autonomous navigation goal poses
+
+Step 4: Run the Complete SLAM & Frontier Explorer Node
+  In Terminal 2 on the robot (or companion computer):
+    python3 python/beetle_slam_mapper.py
+
+Key Capabilities of beetle_slam_mapper.py:
+  1. Automatic Start-Up Calibration:
+     - Slowly creeps ~0.20 m and rotates ~40 degrees while comparing wheel odometry
+       to scan correlation, verifying motor polarity and LiDAR coordinate frames.
+  2. Dynamic Frontier Extraction:
+     - Analyzes /map OccupancyGrid cells: finds frontiers between known free space (0)
+       and unknown territory (-1). Clusters frontier points and selects highest-utility goal.
+  3. Reactive Obstacle Fusion:
+     - Merges real-time 2D laser scan readings with camera floor segmentation to prevent
+       trapping near low-profile obstacles below LiDAR sight lines.
+  4. ArUco Visual Landmark Integration:
+     - Recognizes predefined ArUco dictionary markers placed in the room and logs
+       precise coordinates relative to the /map frame.
+  5. Continuous Map Serialization:
+     - Regularly saves progress and writes final high-resolution map files.
+
+Step 5: Export and Save the Final Map
+  When exploration is complete, save the occupancy grid map:
+    mkdir -p ~/maps
+    ros2 run nav2_map_server map_saver_cli -f ~/maps/pab_map
+
+  This creates:
+    - ~/maps/pab_map.yaml (Map metadata, resolution, origin)
+    - ~/maps/pab_map.pgm  (Greyscale 2D occupancy grid image)
+
+Step 6: Shutdown & Disarm
+  - Press Ctrl + C in the beetle_slam_mapper.py terminal.
+  - Disarm motors:
+      ros2 service call /lyra/disarm std_srvs/srv/Trigger
+
+
+===============================================================================
+EMERGENCY STOP & DISARM PROCEDURES
+===============================================================================
+In any unexpected robot motion, execute one of the following emergency commands:
+
+1. Immediate Motor Zero-Command:
+   ros2 topic pub --once /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+
+2. Service Disarm:
+   ros2 service call /lyra/disarm std_srvs/srv/Trigger
+
+3. Hardware E-Stop:
+   Switch off the physical battery switch on the Lyra chassis or disconnect the motor battery connector.
+
+===============================================================================
+EOF

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "termchat-client"
-version = "0.2.4"
+version = "0.2.6"
 
 description = "Lightweight, non-intrusive terminal chat client connecting to an online chat server with real-time text, images, and AI assistant."
 
@@ -71,10 +71,16 @@ Repository = "https://github.com/your-username/termchat"
 Issues = "https://github.com/your-username/termchat/issues"
 
 [tool.setuptools]
-include-package-data = false
+include-package-data = true
+
+[tool.setuptools.package-data]
+"termchat.codes" = ["*.*", "**/*.*"]
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["termchat*"]
-exclude = ["termchat.__pycache__*", "tests*", "server*"]
+exclude = ["termchat*.__pycache__*", "tests*", "server*"]
+
+[tool.setuptools.exclude-package-data]
+"*" = ["*.pyc", "*__pycache__*"]
 

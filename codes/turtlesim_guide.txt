@@ -1,0 +1,332 @@
+===============================================================================
+                     ROS 2 TURTLESIM MASTER GUIDE
+  Basic Commands, Keyboard Control, Multi-Turtle Coordination & Custom Shapes
+===============================================================================
+
+This guide provides complete instructions for working with ROS 2 Turtlesim:
+  1. How to start turtlesim and control turtles using the keyboard.
+  2. How to remap keyboard controls to drive different turtles.
+  3. Spawning, teleporting, and pen color customization.
+  4. Three Turtle Simultaneous Movement using separate namespaces.
+  5. Mathematical formulas and commands to draw custom shapes (Star, Circle,
+     Square, Triangle, Spiral, Hexagon, and multi-robot formations).
+  6. Ready-to-run Python automated scripts.
+
+-------------------------------------------------------------------------------
+TABLE OF CONTENTS
+-------------------------------------------------------------------------------
+Part 1: Prerequisites & Basic Startup Commands
+Part 2: Keyboard Teleoperation & Namespace Remapping
+Part 3: Turtlesim Services (Spawn, Kill, Teleport, Pen, Clear)
+Part 4: Three Turtle Simultaneous Movement (CLI & Python)
+Part 5: Creating Custom Shapes of Movement (Formulas, CLI & Python)
+Part 6: Custom Shape Code Template (Build Your Own Shape)
+
+
+===============================================================================
+PART 1: PREREQUISITES & BASIC STARTUP COMMANDS
+===============================================================================
+
+1. Install Turtlesim (if not already installed):
+   For ROS 2 Jazzy:
+     sudo apt update
+     sudo apt install -y ros-jazzy-turtlesim
+   For ROS 2 Humble / Iron / Rolling:
+     sudo apt install -y ros-$ROS_DISTRO-turtlesim
+
+2. Source ROS 2 Environment:
+   source /opt/ros/jazzy/setup.bash
+   (Add this line to your ~/.bashrc file to run it automatically in every new terminal)
+
+3. Start the Turtlesim Simulator Window:
+   In Terminal 1:
+     ros2 run turtlesim turtlesim_node
+
+   A blue window opens containing the default center turtle named 'turtle1'.
+
+4. Inspect Active ROS 2 Nodes, Topics, and Services:
+   In Terminal 2:
+     ros2 node list
+       # Shows: /turtlesim
+     ros2 topic list
+       # Shows: /turtle1/cmd_vel, /turtle1/pose, /turtle1/color_sensor
+     ros2 service list
+       # Shows: /spawn, /kill, /clear, /reset, /turtle1/set_pen, etc.
+
+
+===============================================================================
+PART 2: KEYBOARD TELEOPERATION & NAMESPACE REMAPPING
+===============================================================================
+
+1. Control the Default Turtle (turtle1) with Keyboard:
+   In a separate terminal:
+     source /opt/ros/jazzy/setup.bash
+     ros2 run turtlesim turtle_teleop_key
+
+   Keys:
+     - Up Arrow (↑)   : Drive forward
+     - Down Arrow (↓) : Drive backward
+     - Left Arrow (←) : Rotate counter-clockwise (turn left)
+     - Right Arrow (→): Rotate clockwise (turn right)
+     - Spacebar       : Stop movement immediately
+     - G | B | V | C  : Change linear/angular absolute velocity presets
+
+2. Remap Keyboard Control to Drive turtle2 or turtle3:
+   By default, `turtle_teleop_key` publishes velocity to `turtle1/cmd_vel`.
+   To control other spawned turtles, remap the topic:
+
+   * To control Turtle 2:
+     ros2 run turtlesim turtle_teleop_key --ros-args --remap turtle1/cmd_vel:=turtle2/cmd_vel
+
+   * To control Turtle 3:
+     ros2 run turtlesim turtle_teleop_key --ros-args --remap turtle1/cmd_vel:=turtle3/cmd_vel
+
+   Tip: Open 3 terminal tabs side-by-side, each running teleop mapped to a
+   different turtle, to switch keyboard focus between them on the fly!
+
+
+===============================================================================
+PART 3: TURTLESIM SERVICES (SPAWN, KILL, TELEPORT, PEN, CLEAR)
+===============================================================================
+
+The turtlesim window is an 11.0 x 11.0 unit Cartesian plane (X: 0.0 to 11.0, Y: 0.0 to 11.0).
+Center is at (5.54, 5.54). Angles (theta) are in radians (0 = East, 1.5708 = North).
+
+1. Spawning New Turtles:
+   Spawn turtle1 at (2.0, 2.0):
+     ros2 service call /spawn turtlesim/srv/Spawn "{x: 2.0, y: 2.0, theta: 0.0, name: 'turtle1'}"
+
+   Spawn turtle2 at (5.0, 2.0):
+     ros2 service call /spawn turtlesim/srv/Spawn "{x: 5.0, y: 2.0, theta: 0.0, name: 'turtle2'}"
+
+   Spawn turtle3 at (8.0, 2.0):
+     ros2 service call /spawn turtlesim/srv/Spawn "{x: 8.0, y: 2.0, theta: 0.0, name: 'turtle3'}"
+
+2. Teleporting Turtles (Absolute Positioning):
+   Instantly moves a turtle to specific (X, Y) coordinates and facing angle (theta in rad):
+     # Face North (theta = 1.5708 rad = 90 deg):
+     ros2 service call /turtle1/teleport_absolute turtlesim/srv/TeleportAbsolute "{x: 2.0, y: 2.0, theta: 1.5708}"
+     ros2 service call /turtle2/teleport_absolute turtlesim/srv/TeleportAbsolute "{x: 5.0, y: 5.0, theta: 1.5708}"
+     ros2 service call /turtle3/teleport_absolute turtlesim/srv/TeleportAbsolute "{x: 8.0, y: 8.0, theta: 1.5708}"
+
+3. Changing Pen Colors & Width (/turtleX/set_pen):
+   Parameters: r (0-255), g (0-255), b (0-255), width (pixels), off (0=pen down, 1=pen up)
+
+   * Red Pen for Turtle 1:
+     ros2 service call /turtle1/set_pen turtlesim/srv/SetPen "{r: 255, g: 0, b: 0, width: 4, off: 0}"
+
+   * Green Pen for Turtle 2:
+     ros2 service call /turtle2/set_pen turtlesim/srv/SetPen "{r: 0, g: 255, b: 0, width: 4, off: 0}"
+
+   * Blue Pen for Turtle 3:
+     ros2 service call /turtle3/set_pen turtlesim/srv/SetPen "{r: 0, g: 150, b: 255, width: 4, off: 0}"
+
+   * Lift Pen (Move without drawing line):
+     ros2 service call /turtle1/set_pen turtlesim/srv/SetPen "{r: 0, g: 0, b: 0, width: 1, off: 1}"
+
+4. Clearing Canvas & Resetting:
+   * Clear drawn lines without moving turtles:
+     ros2 service call /clear std_srvs/srv/Empty
+
+   * Reset simulator back to original single turtle in center:
+     ros2 service call /reset std_srvs/srv/Empty
+
+5. Removing / Killing Turtles:
+     ros2 service call /kill turtlesim/srv/Kill "{name: 'turtle2'}"
+     ros2 service call /kill turtlesim/srv/Kill "{name: 'turtle3'}"
+
+
+===============================================================================
+PART 4: THREE TURTLE SIMULTANEOUS MOVEMENT
+===============================================================================
+
+Objective:
+  Coordinate multiple robots in parallel by publishing velocity commands to each
+  turtle's namespace simultaneously rather than sequentially.
+
+METHOD A: Instant Parallel CLI Commands (Using Shell '&' Backgrounding)
+-------------------------------------------------------------------------------
+1. Position the three turtles:
+   ros2 service call /spawn turtlesim/srv/Spawn "{x: 2.0, y: 2.0, theta: 0.0, name: 'turtle1'}"
+   ros2 service call /spawn turtlesim/srv/Spawn "{x: 5.0, y: 2.0, theta: 0.0, name: 'turtle2'}"
+   ros2 service call /spawn turtlesim/srv/Spawn "{x: 8.0, y: 2.0, theta: 0.0, name: 'turtle3'}"
+
+   ros2 service call /turtle1/teleport_absolute turtlesim/srv/TeleportAbsolute "{x: 2.0, y: 2.0, theta: 1.5708}"
+   ros2 service call /turtle2/teleport_absolute turtlesim/srv/TeleportAbsolute "{x: 5.0, y: 5.0, theta: 1.5708}"
+   ros2 service call /turtle3/teleport_absolute turtlesim/srv/TeleportAbsolute "{x: 8.0, y: 8.0, theta: 1.5708}"
+
+2. Send movement commands to all three namespaces concurrently at the exact same moment:
+   ros2 topic pub --once /turtle1/cmd_vel geometry_msgs/msg/Twist "{linear: {x: 2.0}}" & ros2 topic pub --once /turtle2/cmd_vel geometry_msgs/msg/Twist "{linear: {x: 2.0}}" & ros2 topic pub --once /turtle3/cmd_vel geometry_msgs/msg/Twist "{linear: {x: 2.0}}"
+
+3. Continuous Synchronized Motion (Streaming at 10 Hz):
+   Run all three turtles in circles at the same time:
+   ros2 topic pub -r 10 /turtle1/cmd_vel geometry_msgs/msg/Twist "{linear: {x: 1.5}, angular: {z: 1.5}}" &
+   ros2 topic pub -r 10 /turtle2/cmd_vel geometry_msgs/msg/Twist "{linear: {x: 2.0}, angular: {z: 1.0}}" &
+   ros2 topic pub -r 10 /turtle3/cmd_vel geometry_msgs/msg/Twist "{linear: {x: 1.8}, angular: {z: -1.2}}" &
+
+   To stop all active background streams:
+   killall -9 ros2
+
+METHOD B: Python Automated Multi-Turtle Controller
+-------------------------------------------------------------------------------
+Run the included multi-turtle automated orchestration script:
+  python3 python/turtlesim_three_turtles.py
+
+What it does:
+  1. Auto-spawns turtle2 and turtle3 if needed.
+  2. Sets Red, Green, and Blue pens with distinct line widths.
+  3. Positions all 3 turtles at the bottom baseline facing North.
+  4. Dispatches synchronized parallel forward runs, synchronized turns,
+     and multi-radius circular orbits.
+  5. Cleans up and zeroes all velocities on exit.
+
+
+===============================================================================
+PART 5: CREATING CUSTOM SHAPES OF MOVEMENTS
+===============================================================================
+
+Understanding the Math of Turtle Kinematics:
+  A turtle in turtlesim has two controllable degrees of freedom via geometry_msgs/msg/Twist:
+    - linear.x  (Forward/Backward speed $v$ in meters/sec)
+    - angular.z (Rotational velocity $\omega$ in radians/sec)
+
+  Key Formulas:
+    - Degrees to Radians: $\text{Radians} = \text{Degrees} \times \frac{\pi}{180}$
+    - Forward Distance: $\text{Distance} = v \times t$
+    - Rotation Angle: $\Delta\theta = \omega \times t \implies t = \frac{\Delta\theta}{\omega}$
+    - Turn Radius for a Circle: $R = \frac{v}{\omega}$
+
+-------------------------------------------------------------------------------
+1. FIVE-POINTED STAR (★)
+-------------------------------------------------------------------------------
+Geometry:
+  - 5 equal edges.
+  - Exterior turn angle at each point: $180^\circ - 36^\circ = 144^\circ = 2.5133\text{ radians}$.
+  - Turn direction: Clockwise (negative angular.z = -1.5708 rad/s).
+  - Turn duration: $2.5133 / 1.5708 \approx 1.60\text{ seconds}$.
+
+CLI Commands to Draw a Star:
+  Repeat this sequence 5 times:
+    # 1. Drive forward 2.5 meters:
+    ros2 topic pub --once /turtle1/cmd_vel geometry_msgs/msg/Twist "{linear: {x: 2.5}}"
+    # 2. Rotate 144 degrees right:
+    ros2 topic pub --once /turtle1/cmd_vel geometry_msgs/msg/Twist "{angular: {z: -2.5133}}"
+
+Run with Python Tool:
+  python3 python/turtlesim_shapes.py --shape star --turtle turtle1 --size 3.0 --speed 2.0
+
+-------------------------------------------------------------------------------
+2. PERFECT CIRCLE (○)
+-------------------------------------------------------------------------------
+Geometry:
+  - Constant linear speed $v$ combined simultaneously with constant angular speed $\omega$.
+  - Desired radius $R = 2.0\text{ m}$.
+  - Set $v = 2.0\text{ m/s} \implies \omega = \frac{v}{R} = \frac{2.0}{2.0} = 1.0\text{ rad/s}$.
+  - Time for full $360^\circ$ circle: $T = \frac{2\pi}{\omega} \approx 6.28\text{ seconds}$.
+
+CLI Command:
+  ros2 topic pub -r 10 /turtle1/cmd_vel geometry_msgs/msg/Twist "{linear: {x: 2.0}, angular: {z: 1.0}}"
+
+Run with Python Tool:
+  python3 python/turtlesim_shapes.py --shape circle --turtle turtle1 --size 2.0 --speed 2.0
+
+-------------------------------------------------------------------------------
+3. SQUARE (□)
+-------------------------------------------------------------------------------
+Geometry:
+  - 4 equal sides.
+  - Turn angle: $90^\circ = 1.5708\text{ radians}$.
+
+CLI Commands:
+  Repeat 4 times:
+    ros2 topic pub --once /turtle1/cmd_vel geometry_msgs/msg/Twist "{linear: {x: 2.5}}"
+    ros2 topic pub --once /turtle1/cmd_vel geometry_msgs/msg/Twist "{angular: {z: 1.5708}}"
+
+Run with Python Tool:
+  python3 python/turtlesim_shapes.py --shape square --turtle turtle1 --size 2.5
+
+-------------------------------------------------------------------------------
+4. EQUILATERAL TRIANGLE (△)
+-------------------------------------------------------------------------------
+Geometry:
+  - 3 equal sides.
+  - Exterior turn angle: $180^\circ - 60^\circ = 120^\circ = 2.0944\text{ radians}$.
+
+CLI Commands:
+  Repeat 3 times:
+    ros2 topic pub --once /turtle1/cmd_vel geometry_msgs/msg/Twist "{linear: {x: 3.0}}"
+    ros2 topic pub --once /turtle1/cmd_vel geometry_msgs/msg/Twist "{angular: {z: 2.0944}}"
+
+Run with Python Tool:
+  python3 python/turtlesim_shapes.py --shape triangle --turtle turtle1 --size 3.0
+
+-------------------------------------------------------------------------------
+5. REGULAR N-SIDED POLYGON (Hexagon, Octagon, etc.)
+-------------------------------------------------------------------------------
+General Formula for any Regular Polygon with N sides:
+  - Exterior Turn Angle: $\theta_{\text{turn}} = \frac{360^\circ}{N} = \frac{2\pi}{N}\text{ radians}$.
+  - Hexagon ($N=6$): Turn angle = $60^\circ = 1.0472\text{ rad}$.
+  - Octagon ($N=8$): Turn angle = $45^\circ = 0.7854\text{ rad}$.
+
+-------------------------------------------------------------------------------
+6. ARCHIMEDEAN SPIRAL (🌀)
+-------------------------------------------------------------------------------
+Geometry:
+  - Linear velocity increases linearly over time ($v(t) = v_0 + a \cdot t$) while
+    angular rotation rate $\omega$ remains fixed.
+  - The path expands outward from center continuously.
+
+Run with Python Tool:
+  python3 python/turtlesim_shapes.py --shape spiral --turtle turtle1
+
+-------------------------------------------------------------------------------
+7. MULTI-TURTLE SIMULTANEOUS SHAPES
+-------------------------------------------------------------------------------
+Run all three turtles drawing their own unique shapes at the exact same moment:
+  - Turtle 1 draws a Gold Star
+  - Turtle 2 draws a Cyan Circle
+  - Turtle 3 draws a Green Square
+
+Command:
+  python3 python/turtlesim_shapes.py --shape simultaneous
+
+
+===============================================================================
+PART 6: CUSTOM SHAPE CODE TEMPLATE (BUILD YOUR OWN SHAPE)
+===============================================================================
+
+You can create any arbitrary shape by copying this clean 15-line template:
+
+```python
+import time, math, rclpy
+from rclpy.node import Node
+from geometry_msgs.msg import Twist
+
+rclpy.init()
+node = Node('my_custom_shape')
+pub = node.create_publisher(Twist, '/turtle1/cmd_vel', 10)
+
+def step(linear_x, angular_z, duration_sec):
+    msg = Twist()
+    msg.linear.x, msg.angular.z = float(linear_x), float(angular_z)
+    steps = int(duration_sec * 20)
+    for _ in range(steps):
+        pub.publish(msg)
+        time.sleep(0.05)
+    pub.publish(Twist())  # stop pulse
+    time.sleep(0.1)
+
+# Example: Draw a Diamond or Hexagon
+SIDES = 6
+EXTERIOR_ANGLE_RAD = (2 * math.pi) / SIDES  # 60 degrees
+
+for side in range(SIDES):
+    step(linear_x=2.0, angular_z=0.0, duration_sec=1.5)              # Straight edge
+    step(linear_x=0.0, angular_z=1.5708, duration_sec=EXTERIOR_ANGLE_RAD / 1.5708)  # Turn
+
+node.destroy_node()
+rclpy.shutdown()
+```
+
+===============================================================================
+EOF

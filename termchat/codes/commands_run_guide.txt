@@ -1,0 +1,343 @@
+===============================================================================
+               TERMCHAT ROBOTICS & EMBEDDED SYSTEMS RUN GUIDE
+===============================================================================
+This guide contains complete commands, hardware pinouts, wiring diagrams,
+software dependencies, and execution instructions for all Arduino sketches
+and Python scripts included in this package.
+
+-------------------------------------------------------------------------------
+DIRECTORY STRUCTURE
+-------------------------------------------------------------------------------
+termchat/codes/
+├── arduino/
+│   ├── car_park.ino               # Arduino Smart Car Parking System (IR sensors + LCD/Buzzer)
+│   ├── square_motion.ino          # L298N Differential Robot: Square Path Pattern
+│   ├── circle_motion.ino          # L298N Differential Robot: Circle Path Pattern
+│   ├── line_following.ino         # 3-Sensor IR Line Following Robot
+│   └── maze_solving.ino           # Front Ultrasonic Wall/Maze Following Robot
+├── python/
+│   ├── traffic.py                 # Raspberry Pi 4-Way Adaptive Traffic Controller (gpiozero)
+│   ├── distance.py                # HC-SR04 Ultrasonic Distance Sensor with Alarm (RPi.GPIO)
+│   ├── binary_classifier_dataset.py     # Camera Image Capture for Binary Classes (rpicam-still)
+│   ├── binary_classifier_train_live.py  # MLP Neural Net Training & Live OpenCV Classifier
+│   ├── multiclass_classifier.py         # Generalized Multi-Class Dataset, Training & Live AI
+│   ├── obstacle_avoidance.py      # BeetleBot ROS 2 Jazzy LiDAR Autonomous Avoidance
+│   ├── color_navigation.py        # BeetleBot ROS 2 Jazzy OpenCV Color Card Navigation
+│   ├── arrow_navigation.py        # BeetleBot ROS 2 Jazzy OpenCV Arrow Contour Navigation
+│   └── beetle_slam_mapper.py      # BeetleBot ROS 2 Jazzy Autonomous 2D LiDAR SLAM & Mapping
+├── commands_run_guide.txt         # Common Run Guide (this file)
+└── beetlebot_experiments.txt      # Dedicated Manual for BeetleBot Experiments 1, 2, and 3
+
+
+===============================================================================
+PART 1: ARDUINO EXPERIMENTS (SKETCHES)
+===============================================================================
+
+Prerequisites:
+  - Install the Arduino IDE (v2.x or v1.8.x) from https://www.arduino.cc/en/software
+  - OR install Arduino CLI:
+      curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+      arduino-cli core install arduino:avr
+
+-------------------------------------------------------------------------------
+1. Smart Car Parking System: car_park.ino
+-------------------------------------------------------------------------------
+Description:
+  Automated parking garage monitor with entry and exit infrared (IR) beam sensors,
+  free space tracking counter, capacity check, and alert buzzer.
+
+Hardware Pin Connections:
+  - Entry IR Sensor Output  --> Arduino Digital Pin D2
+  - Exit IR Sensor Output   --> Arduino Digital Pin D3
+  - Buzzer Positive (+)     --> Arduino Digital Pin D4
+  - Sensor VCC              --> Arduino 5V
+  - Sensor GND              --> Arduino GND
+
+Compilation & Upload:
+  * Using Arduino IDE:
+      1. Open `arduino/car_park.ino` in Arduino IDE.
+      2. Under Tools -> Board, select "Arduino Uno" (or "Arduino Nano").
+      3. Under Tools -> Port, select your Arduino COM port (e.g., COM3 on Windows, /dev/ttyACM0 or /dev/ttyUSB0 on Linux).
+      4. Click "Upload" (Ctrl + U).
+      5. Open Serial Monitor (Ctrl + Shift + M) set to 9600 baud.
+  * Using Arduino CLI:
+      arduino-cli compile --fqbn arduino:avr:uno arduino/car_park.ino
+      arduino-cli upload -p /dev/ttyACM0 --fqbn arduino:avr:uno arduino/car_park.ino
+      arduino-cli monitor -p /dev/ttyACM0 --config baudrate=9600
+
+Runtime Behavior:
+  - Prints available parking slots (initializes at 10 free spaces).
+  - When an object passes Entry Sensor (D2), free slots decrease and state is logged.
+  - When an object passes Exit Sensor (D3), free slots increase.
+  - When free space hits 0 ("PARKING FULL"), the buzzer beeps and new entries are blocked.
+
+-------------------------------------------------------------------------------
+2. Square Motion Robot: square_motion.ino
+-------------------------------------------------------------------------------
+Description:
+  Commands a 2-wheel/4-wheel differential drive chassis with an L298N H-Bridge
+  motor driver to execute an exact 4-legged square path and then brake.
+
+Hardware Pin Connections:
+  - Left Motor Speed (ENA)  --> Arduino PWM Pin D6
+  - Left Motor IN1          --> Arduino Digital Pin D7
+  - Left Motor IN2          --> Arduino Digital Pin D8
+  - Right Motor IN3         --> Arduino Digital Pin D9
+  - Right Motor IN4         --> Arduino Digital Pin D11
+  - Right Motor Speed (ENB) --> Arduino PWM Pin D5
+  - Logic GND               --> Arduino GND (must be common with motor battery GND!)
+  - Motor Power (12V/VMS)   --> External Battery pack (+7.4V to +12V)
+
+Compilation & Upload:
+  arduino-cli compile --fqbn arduino:avr:uno arduino/square_motion.ino
+  arduino-cli upload -p /dev/ttyACM0 --fqbn arduino:avr:uno arduino/square_motion.ino
+
+Operation:
+  - Robot pauses for 2 seconds after boot.
+  - Repeats 4 cycles of:
+      Forward (2000 ms) -> Stop (300 ms) -> 90-degree Right Turn (650 ms) -> Stop (300 ms)
+  - Robot comes to a permanent halt after completing the square.
+
+-------------------------------------------------------------------------------
+3. Circle Motion Robot: circle_motion.ino
+-------------------------------------------------------------------------------
+Description:
+  Drives differential motors at uneven PWM speeds (Left: 170, Right: 80)
+  to trace smooth circular trajectories.
+
+Hardware Pin Connections:
+  - Same L298N pin configuration as square motion (ENA=D6, IN1=D7, IN2=D8, IN3=D9, IN4=D11, ENB=D5).
+
+Compilation & Upload:
+  arduino-cli compile --fqbn arduino:avr:uno arduino/circle_motion.ino
+  arduino-cli upload -p /dev/ttyACM0 --fqbn arduino:avr:uno arduino/circle_motion.ino
+
+Operation:
+  - Runs in a continuous smooth circular arc for 4.5 seconds, then stops.
+
+-------------------------------------------------------------------------------
+4. Line Following Robot: line_following.ino
+-------------------------------------------------------------------------------
+Description:
+  Autonomous line tracer using a 3-channel optical infrared TCRT5000/IR line tracking array
+  and L298N differential drive with proportional steering.
+
+Hardware Pin Connections:
+  - Left IR Line Sensor     --> Arduino Digital Pin D2
+  - Center IR Line Sensor   --> Arduino Digital Pin D3
+  - Right IR Line Sensor    --> Arduino Digital Pin D4
+  - Motor Driver Pins       --> ENA: D6, IN1: D7, IN2: D8, IN3: D9, IN4: D11, ENB: D5
+
+Compilation & Upload:
+  arduino-cli compile --fqbn arduino:avr:uno arduino/line_following.ino
+  arduino-cli upload -p /dev/ttyACM0 --fqbn arduino:avr:uno arduino/line_following.ino
+
+Operation:
+  - Center detected -> Drives straight forward.
+  - Left detected -> Turns left to realign with the dark line.
+  - Right detected -> Turns right to realign with the dark line.
+  - All white / line lost -> Holds previous turning bias or stops.
+
+-------------------------------------------------------------------------------
+5. Ultrasonic Maze Solving Robot: maze_solving.ino
+-------------------------------------------------------------------------------
+Description:
+  Autonomous obstacle-avoiding maze explorer using front ultrasonic HC-SR04 distance
+  ranging and differential steering logic.
+
+Hardware Pin Connections:
+  - Ultrasonic TRIG         --> Arduino Digital Pin D12
+  - Ultrasonic ECHO         --> Arduino Digital Pin D13
+  - Motor Driver Pins       --> ENA: D6, IN1: D7, IN2: D8, IN3: D9, IN4: D11, ENB: D5
+
+Compilation & Upload:
+  arduino-cli compile --fqbn arduino:avr:uno arduino/maze_solving.ino
+  arduino-cli upload -p /dev/ttyACM0 --fqbn arduino:avr:uno arduino/maze_solving.ino
+
+Operation:
+  - Distance > 25 cm -> Clear corridor, drives forward at cruise speed (140 PWM).
+  - Distance <= 25 cm -> Obstacle detected; halts, reverses slightly, and turns right/left
+    to navigate out of dead-ends.
+
+
+===============================================================================
+PART 2: RASPBERRY PI PYTHON EXPERIMENTS
+===============================================================================
+
+System Setup (Raspberry Pi OS Bookworm / Bullseye):
+  sudo apt update
+  sudo apt install -y python3-pip python3-dev python3-opencv python3-numpy libcamera-tools
+  pip install --break-system-packages gpiozero RPi.GPIO scikit-learn opencv-python
+
+-------------------------------------------------------------------------------
+1. 4-Way Adaptive Traffic Light Controller: traffic.py
+-------------------------------------------------------------------------------
+Description:
+  Calculates dynamic green light time allocations for 4 intersecting roads
+  based on real-time vehicle counts, switching roads with safety red buffer intervals.
+
+Wiring / GPIO Pinout (BCM numbering):
+  Road 1: RED -> GPIO 17, YELLOW -> GPIO 27, GREEN -> GPIO 22
+  Road 2: RED -> GPIO 10, YELLOW -> GPIO 9,  GREEN -> GPIO 11
+  Road 3: RED -> GPIO 5,  YELLOW -> GPIO 6,  GREEN -> GPIO 13
+  Road 4: RED -> GPIO 19, YELLOW -> GPIO 26, GREEN -> GPIO 21
+  GND   : Ground rail connected to Pi physical Pin 6, 9, 14, 20, 25, 30, 34, or 39.
+
+Execution:
+  python3 python/traffic.py
+  (Prompts for vehicle counts on Road 1 to 4 and begins intelligent cycle)
+
+-------------------------------------------------------------------------------
+2. Ultrasonic Distance Sensor with Alarm: distance.py
+-------------------------------------------------------------------------------
+Description:
+  Microsecond-precision HC-SR04 sonar distance measuring script with audible buzzer
+  alarm trigger when obstacles breach the safety threshold (10 cm).
+
+Wiring / GPIO Pinout (BCM numbering):
+  - TRIG    -> GPIO 23 (Output)
+  - ECHO    -> GPIO 24 (Input with 1k/2k ohm voltage divider to safely level 5V to 3.3V)
+  - BUZZER  -> GPIO 18 (Active Buzzer Output)
+  - VCC     -> 5V (Physical Pin 2 or 4)
+  - GND     -> Pi Ground (Physical Pin 6)
+
+Execution:
+  python3 python/distance.py
+
+-------------------------------------------------------------------------------
+3. Binary Classifier - Dataset Collection: binary_classifier_dataset.py
+-------------------------------------------------------------------------------
+Description:
+  Automates capturing and organizing training images using the Raspberry Pi Camera
+  subsystem (`rpicam-still`) for binary visual classification.
+
+Execution:
+  # 1. Capture background / non-target images:
+  python3 python/binary_classifier_dataset.py
+  # Enter category name "Other" when prompted (or modify category string).
+  # Press [ENTER] repeatedly in varying light/angles to capture 30-50 samples.
+  # Press 'q' + [ENTER] to exit.
+
+  # 2. Capture target images (e.g. "Pen"):
+  # Change category = "Pen" inside script or collect target photos:
+  python3 python/binary_classifier_dataset.py
+
+-------------------------------------------------------------------------------
+4. Binary Classifier - Training & Live Prediction: binary_classifier_train_live.py
+-------------------------------------------------------------------------------
+Description:
+  Loads grayscale downsampled 64x64 images from dataset/Other and dataset/Pen,
+  trains a Scikit-Learn MLPClassifier neural network, and runs real-time camera inference.
+
+Execution:
+  python3 python/binary_classifier_train_live.py
+  # Terminal prints: Training accuracy, converges, and displays live OpenCV classification stream.
+  # Press 'q' inside OpenCV window to quit.
+
+-------------------------------------------------------------------------------
+5. Multi-Class Classifier Suite: multiclass_classifier.py
+-------------------------------------------------------------------------------
+Description:
+  Production-grade multi-category image classification tool extending the MLP
+  architecture to arbitrary user-specified classes (e.g. Pen, Phone, Cup, Notebook, Keys).
+
+Commands:
+  # Step 1: Collect dataset for class A
+  python3 python/multiclass_classifier.py collect --category Pen --samples 40
+
+  # Step 2: Collect dataset for class B
+  python3 python/multiclass_classifier.py collect --category Phone --samples 40
+
+  # Step 3: Collect dataset for class C (Background / Other)
+  python3 python/multiclass_classifier.py collect --category Other --samples 40
+
+  # Step 4: Train multi-class MLP model
+  python3 python/multiclass_classifier.py train --epochs 200
+
+  # Step 5: Run real-time live webcam / Pi camera inference
+  python3 python/multiclass_classifier.py live
+
+
+===============================================================================
+PART 3: BEETLEBOT ROS 2 JAZZY AUTONOMOUS ROBOTICS
+===============================================================================
+
+For detailed step-by-step procedures, SSH setup, ROS 2 topics, and parameter
+tuning for the BeetleBot robot, refer to:
+  termchat/codes/beetlebot_experiments.txt
+
+Summary of BeetleBot Commands:
+-------------------------------------------------------------------------------
+1. BeetleBot Experiment 1: LiDAR Obstacle Avoidance
+   Hardware Launch:
+     ros2 launch lyra_bringup robot.launch.py
+   Arm Robot:
+     ros2 service call /lyra/arm std_srvs/srv/Trigger
+   Run Avoidance Node:
+     python3 python/obstacle_avoidance.py
+
+2. BeetleBot Experiment 2: Computer Vision Navigation
+   Color Card Navigation (Green=Forward, Yellow=Slow, Red=Stop):
+     python3 python/color_navigation.py
+   Arrow Contour Navigation (Left Arrow=Turn Left, Right Arrow=Turn Right):
+     python3 python/arrow_navigation.py
+   Monitor Velocity Commands:
+     ros2 topic echo /cmd_vel_nav
+
+3. BeetleBot Experiment 3: 2D LiDAR SLAM & Frontier Exploration
+   Launch SLAM Stack:
+     ros2 launch lyra_bringup robot.launch.py mode:=slam camera:=true imu:=true
+   Run Autonomous SLAM Mapper & Frontier Explorer:
+     python3 python/beetle_slam_mapper.py
+   Visualize in RViz2:
+     rviz2 -d /home/veerobot/lyra_ws/src/lyra_description/rviz/slam.rviz
+   Save Final Map:
+     ros2 run nav2_map_server map_saver_cli -f ~/maps/laboratory_map
+   Disarm:
+     ros2 service call /lyra/disarm std_srvs/srv/Trigger
+
+
+===============================================================================
+PART 4: ROS 2 TURTLESIM MULTI-ROBOT COORDINATION & CUSTOM SHAPES
+===============================================================================
+
+For complete detailed tutorials, geometric math formulas, and code templates,
+refer to:
+  termchat/codes/turtlesim_guide.txt
+
+Summary of Key Turtlesim Commands:
+-------------------------------------------------------------------------------
+1. Startup & Keyboard Control:
+   Start Simulator:
+     ros2 run turtlesim turtlesim_node
+   Control Default Turtle (turtle1) with Keyboard:
+     ros2 run turtlesim turtle_teleop_key
+   Control Turtle 2 with Keyboard (Remapped):
+     ros2 run turtlesim turtle_teleop_key --ros-args --remap turtle1/cmd_vel:=turtle2/cmd_vel
+   Control Turtle 3 with Keyboard (Remapped):
+     ros2 run turtlesim turtle_teleop_key --ros-args --remap turtle1/cmd_vel:=turtle3/cmd_vel
+
+2. Three Turtle Simultaneous Spawning & Movement:
+   Spawn 3 Turtles:
+     ros2 service call /spawn turtlesim/srv/Spawn "{x: 2.0, y: 2.0, theta: 0.0, name: 'turtle1'}"
+     ros2 service call /spawn turtlesim/srv/Spawn "{x: 5.0, y: 2.0, theta: 0.0, name: 'turtle2'}"
+     ros2 service call /spawn turtlesim/srv/Spawn "{x: 8.0, y: 2.0, theta: 0.0, name: 'turtle3'}"
+   Teleport to North Orientation:
+     ros2 service call /turtle1/teleport_absolute turtlesim/srv/TeleportAbsolute "{x: 2.0, y: 2.0, theta: 1.5708}"
+     ros2 service call /turtle2/teleport_absolute turtlesim/srv/TeleportAbsolute "{x: 5.0, y: 5.0, theta: 1.5708}"
+     ros2 service call /turtle3/teleport_absolute turtlesim/srv/TeleportAbsolute "{x: 8.0, y: 8.0, theta: 1.5708}"
+   Simultaneous Drive (Single Shot Concurrent):
+     ros2 topic pub --once /turtle1/cmd_vel geometry_msgs/msg/Twist "{linear: {x: 2.0}}" & ros2 topic pub --once /turtle2/cmd_vel geometry_msgs/msg/Twist "{linear: {x: 2.0}}" & ros2 topic pub --once /turtle3/cmd_vel geometry_msgs/msg/Twist "{linear: {x: 2.0}}"
+   Python Automated Multi-Turtle Controller:
+     python3 python/turtlesim_three_turtles.py
+
+3. Custom Shape Drawing (Star, Circle, Square, Triangle, Spiral):
+     python3 python/turtlesim_shapes.py --shape star --turtle turtle1
+     python3 python/turtlesim_shapes.py --shape circle --turtle turtle2 --size 2.0
+     python3 python/turtlesim_shapes.py --shape square --turtle turtle3
+     python3 python/turtlesim_shapes.py --shape triangle --turtle turtle1
+     python3 python/turtlesim_shapes.py --shape spiral --turtle turtle2
+     python3 python/turtlesim_shapes.py --shape simultaneous
+
+===============================================================================
+EOF
