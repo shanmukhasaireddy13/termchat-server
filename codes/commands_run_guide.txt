@@ -339,5 +339,61 @@ Summary of Key Turtlesim Commands:
      python3 python/turtlesim_shapes.py --shape spiral --turtle turtle2
      python3 python/turtlesim_shapes.py --shape simultaneous
 
+
+===============================================================================
+PART 5: VEEROBOT BEETLE BOT (LYRA) OPERATION & AUTOMATED MOTION SEQUENCES
+===============================================================================
+Prerequisites:
+  * Robot IP: 192.168.0.128  |  User: veerobot  |  ROS 2: Jazzy  |  WS: ~/lyra_ws
+
+1. Network Verification:
+     ping 192.168.0.128
+
+2. Terminal 1: Hardware Bringup:
+     ssh veerobot@192.168.0.128
+     source /opt/ros/jazzy/setup.bash
+     source /home/veerobot/lyra_ws/install/setup.bash
+     ros2 launch lyra_bringup robot.launch.py
+
+3. Terminal 2: Arming & Safety Gates:
+     ssh veerobot@192.168.0.128
+     source /opt/ros/jazzy/setup.bash
+     source /home/veerobot/lyra_ws/install/setup.bash
+     ros2 service call /lyra/arm std_srvs/srv/Trigger
+
+4. Emergency Disarm & Halt Handlers:
+     ros2 service call /lyra/disarm std_srvs/srv/Trigger
+     ros2 topic pub --once /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+
+5. Automated Motion Sequences:
+   - Move Backward (5s + 1.5s forced stop):
+       ros2 topic pub -r 10 -t 50 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: -0.3, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 15 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+       (or: termchat run backward)
+
+   - Move Forward (5s + 1.5s forced stop):
+       ros2 topic pub -r 10 -t 50 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.3, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 15 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+       (or: termchat run forward)
+
+   - Emergency Flood Stop (forces hardware halt):
+       ros2 topic pub -r 20 -t 40 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+       (or: termchat run stop)
+
+   - Advanced Sequence (Forward 5s -> Stop -> Backward 5s -> Stop):
+       ros2 topic pub -r 10 -t 50 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.3, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 15 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 50 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: -0.3, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 20 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+       (or: termchat run seq)
+
+   - Square Path Sequence (4 sides: Drive -> Stop -> Turn -> Stop):
+       ros2 topic pub -r 10 -t 30 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.3, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 10 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 20 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.5}}" && ros2 topic pub -r 10 -t 10 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 30 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.3, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 10 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 20 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.5}}" && ros2 topic pub -r 10 -t 10 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 30 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.3, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 10 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 20 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.5}}" && ros2 topic pub -r 10 -t 10 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 30 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.3, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 15 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+       (or: termchat run square)
+
+6. Keyboard Teleoperation (/cmd_vel_nav):
+     source /opt/ros/jazzy/setup.bash
+     ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r cmd_vel:=cmd_vel_nav
+     (or: termchat run teleop)
+
+7. Velocity Verification Monitor:
+     source /opt/ros/jazzy/setup.bash
+     ros2 topic echo /cmd_vel_nav
+
 ===============================================================================
 EOF

@@ -296,8 +296,122 @@ In any unexpected robot motion, execute one of the following emergency commands:
 2. Service Disarm:
    ros2 service call /lyra/disarm std_srvs/srv/Trigger
 
-3. Hardware E-Stop:
+3. Emergency Flood Stop (20 Hz forced halt):
+   ros2 topic pub -r 20 -t 40 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+
+4. Hardware E-Stop:
    Switch off the physical battery switch on the Lyra chassis or disconnect the motor battery connector.
+
+
+===============================================================================
+VEEROBOT BEETLE BOT (LYRA) - STEP-BY-STEP OPERATION & MANUAL TESTING
+===============================================================================
+Target Hardware IP: 192.168.0.128
+SSH Account:        veerobot
+ROS 2 Version:      Jazzy
+Workspace:          /home/veerobot/lyra_ws
+
+STEP 1: NETWORK SUBMAPPING AND VERIFICATION
+  ping 192.168.0.128
+
+STEP 2: LAUNCHING ROBOT HARDWARE BASE INTERFACES (TERMINAL 1)
+  ssh veerobot@192.168.0.128
+  source /opt/ros/jazzy/setup.bash
+  source /home/veerobot/lyra_ws/install/setup.bash
+  ros2 launch lyra_bringup robot.launch.py
+
+STEP 3: OVERRIDING PROTECTION CIRCUITS & MANUAL MOTOR TESTING (TERMINAL 2)
+  ssh veerobot@192.168.0.128
+  source /opt/ros/jazzy/setup.bash
+  source /home/veerobot/lyra_ws/install/setup.bash
+
+  # Electronic arming call:
+  ros2 service call /lyra/arm std_srvs/srv/Trigger
+
+  # Forward hardware pulse test (0.3 m/s):
+  ros2 topic pub --once /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.3, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+
+
+===============================================================================
+ROS 2 AUTOMATED ROBOT MOVEMENT COMMANDS
+===============================================================================
+
+1. MOVE BACKWARD (5 SECONDS + 1.5S FORCED STOP)
+-------------------------------------------------------------------------------
+ros2 topic pub -r 10 -t 50 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: -0.3, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 15 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+
+(Shortcut: termchat run backward)
+
+
+2. MOVE FORWARD (5 SECONDS + 1.5S FORCED STOP)
+-------------------------------------------------------------------------------
+ros2 topic pub -r 10 -t 50 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.3, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 15 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+
+(Shortcut: termchat run forward)
+
+
+3. EMERGENCY FLOOD STOP COMMAND (FORCES HARDWARE TO HALT)
+-------------------------------------------------------------------------------
+ros2 topic pub -r 20 -t 40 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+
+(Shortcut: termchat run stop)
+
+
+4. ADVANCED SEQUENCE (FORWARD 5S -> STOP -> BACKWARD 5S -> STOP)
+-------------------------------------------------------------------------------
+ros2 topic pub -r 10 -t 50 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.3, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 15 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 50 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: -0.3, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 20 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+
+(Shortcut: termchat run seq)
+
+
+5. SQUARE PATH SEQUENCE (4 SIDES: DRIVE -> STOP -> TURN -> STOP)
+-------------------------------------------------------------------------------
+ros2 topic pub -r 10 -t 30 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.3, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 10 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 20 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.5}}" && ros2 topic pub -r 10 -t 10 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 30 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.3, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 10 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 20 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.5}}" && ros2 topic pub -r 10 -t 10 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 30 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.3, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 10 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 20 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.5}}" && ros2 topic pub -r 10 -t 10 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 30 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.3, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" && ros2 topic pub -r 10 -t 15 /cmd_vel_nav geometry_msgs/msg/Twist "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+
+(Shortcut: termchat run square)
+
+
+===============================================================================
+ROS 2 JAZZY - KEYBOARD TELEOP STEP-BY-STEP GUIDE
+===============================================================================
+
+Target Topic: /cmd_vel_nav
+
+STEP 1: SOURCE AND RUN THE NODE
+-------------------------------------------------------------------------------
+Source your ROS 2 Jazzy environment and launch the node. The default topic 
+'cmd_vel' is explicitly remapped to match your robot's 'cmd_vel_nav' topic:
+
+    source /opt/ros/jazzy/setup.bash
+    ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r cmd_vel:=cmd_vel_nav
+
+    (Shortcut: termchat run teleop)
+
+
+STEP 2: KEYBOARD CONTROLS REFERENCE
+-------------------------------------------------------------------------------
+Keep the teleop terminal window selected and active. Use these keys to control:
+
+    [ q ]  [ w ]  [ e ]      q/z : Increase/decrease max speeds by 10%
+    [ a ]  [ s ]  [ d ]      w/x : Increase/decrease only linear speed by 10%
+                             e/c : Increase/decrease only angular speed by 10%
+    [ i ]  [ o ]  [ p ]      
+    [ j ]  [ k ]  [ l ]      i   : Move Forward
+    [ m ]  [ , ]  [ . ]      ,   : Move Backward
+                             j   : Turn Left
+                             l   : Turn Right
+                             k   : Stop Completely (Zero velocities)
+
+                             u/o/m/. : Diagonal moving combinations
+
+
+STEP 3: VERIFICATION (OPTIONAL)
+-------------------------------------------------------------------------------
+To monitor the active velocity commands being sent out, open a separate terminal, 
+source your environment, and echo the topic:
+
+    source /opt/ros/jazzy/setup.bash
+    ros2 topic echo /cmd_vel_nav
 
 ===============================================================================
 EOF

@@ -26,6 +26,7 @@ from termchat.codes import (
     COMMANDS_GUIDE,
     BEETLEBOT_GUIDE,
     TURTLESIM_GUIDE,
+    OPERATION_MANUAL,
 )
 
 SCRIPT_MAP = {
@@ -43,6 +44,20 @@ SCRIPT_MAP = {
     "mapper": "beetle_slam_mapper.py",
     "beetle_slam": "beetle_slam_mapper.py",
     "beetle_slam_mapper": "beetle_slam_mapper.py",
+
+    # BeetleBot Automated Motion Sequences & Safety
+    "arm": "beetlebot_motion_sequences.py",
+    "disarm": "beetlebot_motion_sequences.py",
+    "forward": "beetlebot_motion_sequences.py",
+    "backward": "beetlebot_motion_sequences.py",
+    "stop": "beetlebot_motion_sequences.py",
+    "halt": "beetlebot_motion_sequences.py",
+    "square": "beetlebot_motion_sequences.py",
+    "seq": "beetlebot_motion_sequences.py",
+    "patrol": "beetlebot_motion_sequences.py",
+    "teleop": "beetlebot_motion_sequences.py",
+    "beetle_motion": "beetlebot_motion_sequences.py",
+    "motion": "beetlebot_motion_sequences.py",
 
     # Turtlesim Multi-Turtle & Shapes
     "turtlesim": "turtlesim_three_turtles.py",
@@ -73,6 +88,16 @@ def list_available():
     print("  termchat run slam         -> 2D LiDAR SLAM, Frontier Exploration & ArUco")
     print("  termchat setup-lyra       -> 1-Click setup ~/lyra_ws (NO nano, NO pasting!)")
 
+    print("\n[BeetleBot Motion Sequences & Safety (/cmd_vel_nav)]")
+    print("  termchat run arm          -> Electronic Arming Call (/lyra/arm)")
+    print("  termchat run disarm       -> Emergency Disarm Call (/lyra/disarm)")
+    print("  termchat run forward      -> Move Forward 5s + forced stop")
+    print("  termchat run backward     -> Move Backward 5s + forced stop")
+    print("  termchat run stop         -> Emergency Flood Stop (20 Hz halt)")
+    print("  termchat run square       -> Square Path Sequence (4 sides)")
+    print("  termchat run seq          -> Advanced Patrol (Forward -> Stop -> Backward -> Stop)")
+    print("  termchat run teleop       -> Keyboard Teleop remapped to /cmd_vel_nav")
+
     print("\n[ROS 2 Turtlesim Multi-Robot & Shape Suite]")
     print("  termchat run turtlesim    -> 3 Turtle Simultaneous Coordinated Movement")
     print("  termchat run shapes       -> Custom Shape Drawing (Star, Circle, Square, Spiral)")
@@ -90,6 +115,7 @@ def list_available():
     print(f"  • {COMMANDS_GUIDE.name}")
     print(f"  • {BEETLEBOT_GUIDE.name}")
     print(f"  • {TURTLESIM_GUIDE.name}")
+    print(f"  • {OPERATION_MANUAL.name}")
     print("=" * 65)
 
 
@@ -98,7 +124,8 @@ def run_script(name, extra_args=None):
     if extra_args is None:
         extra_args = []
 
-    target_file = SCRIPT_MAP.get(name.lower().strip())
+    clean_name = name.lower().strip()
+    target_file = SCRIPT_MAP.get(clean_name)
     if not target_file:
         # Check if direct filename match in python directory
         candidate = PYTHON_DIR / name
@@ -108,6 +135,10 @@ def run_script(name, extra_args=None):
             print(f"[Error] Unknown script '{name}'.")
             print("Run 'termchat run list' to see all available scripts.")
             return 1
+
+    # If invoking motion sequence alias, automatically pass alias command
+    if target_file == "beetlebot_motion_sequences.py" and not extra_args:
+        extra_args = [clean_name]
 
     script_path = PYTHON_DIR / target_file
     if not script_path.is_file():
@@ -123,6 +154,7 @@ def run_script(name, extra_args=None):
         "color_navigation.py",
         "arrow_navigation.py",
         "beetle_slam_mapper.py",
+        "beetlebot_motion_sequences.py",
         "turtlesim_three_turtles.py",
         "turtlesim_shapes.py",
     )
@@ -188,6 +220,7 @@ def setup_lyra_workspace():
         "color_navigation.py",
         "arrow_navigation.py",
         "beetle_slam_mapper.py",
+        "beetlebot_motion_sequences.py",
     ]
 
     print(f"\n[1/4] Deploying Python nodes to {lyra_src}...")
