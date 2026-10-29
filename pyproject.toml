@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "termchat-client"
-version = "0.3.1"
+version = "0.3.2"
 
 description = "Lightweight, non-intrusive terminal chat client connecting to an online chat server with real-time text, images, and AI assistant."
 

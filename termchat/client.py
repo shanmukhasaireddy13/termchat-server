@@ -175,9 +175,27 @@ class TerminalClient:
                         print("  /help           - Show help")
                         print("  /quit or /exit  - Exit chat\n")
                         continue
-                    elif cmd == "/ai" and text == "/ai":
-                        print("\nUsage: /ai <your question here>")
-                        print("Example: /ai write a python script to download a webpage\n")
+                    elif cmd in ("/ai", "/ask"):
+                        parts = text.split(maxsplit=1)
+                        if len(parts) < 2 or not parts[1].strip():
+                            print("\nUsage: /ai <your question here>")
+                            print("Example: /ai write a python script to download a webpage\n")
+                            continue
+
+                        question = parts[1].strip().strip('"').strip("'")
+                        clean_msg = f"/ai {question}"
+
+                        if self.websocket:
+                            payload = {
+                                "type": "chat",
+                                "text": clean_msg,
+                                "timestamp": datetime.now().isoformat(),
+                            }
+                            await self.websocket.send(json.dumps(payload))
+                        else:
+                            print("\n[TermChat AI] Thinking...")
+                            answer = query_llm(question)
+                            self.handle_incoming_ai({"sender": "🤖 TermChat AI", "text": answer})
                         continue
 
                     elif cmd == "/web":

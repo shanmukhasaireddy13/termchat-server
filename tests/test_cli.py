@@ -30,3 +30,15 @@ def test_client_badge_format_no_globe_icon(capsys):
     captured_img = capsys.readouterr().out
     assert "[Web] Alice Sent an image: test.png" in captured_img
     assert "🌐" not in captured_img
+
+
+def test_ai_query_handling_offline(capsys, monkeypatch):
+    from termchat.client import TerminalClient
+    client = TerminalClient(server_url="https://test.example.com", username="tester")
+    monkeypatch.setattr("termchat.client.query_llm", lambda q, **kwargs: f"Answer: {q}")
+    
+    # Offline query should call handle_incoming_ai directly
+    client.handle_incoming_ai({"sender": "🤖 TermChat AI", "text": "Answer: 42"})
+    out = capsys.readouterr().out
+    assert "TermChat AI" in out
+    assert "Answer: 42" in out

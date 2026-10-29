@@ -83,5 +83,13 @@ def test_websocket_and_image_upload():
         img_msg = json.loads(ws_term.receive_text())
         assert img_msg["type"] == "image"
         assert img_msg["sender"] == "WebMaster"
+
+        # Test bare /ai prompt gives usage without crashing
+        ws_term.send_text(json.dumps({"type": "chat", "text": "/ai"}))
+        user_ai_echo = json.loads(ws_term.receive_text())
+        assert user_ai_echo["text"] == "/ai"
+        usage_reply = json.loads(ws_term.receive_text())
+        assert usage_reply["type"] == "ai"
+        assert "Usage" in usage_reply["text"]
         assert img_msg["client_type"] == "web"
         assert img_msg["image_url"] == image_url

@@ -289,19 +289,25 @@ async def websocket_endpoint(
                     continue
 
                 # Check if this is an AI query
+                text_lower = text.lower().strip()
                 is_ai_query = (
-                    text.startswith("/ai ")
-                    or text.startswith("@ai ")
-                    or text.startswith("/ask ")
-                    or text.startswith("ai: ")
+                    text_lower.startswith(("/ai", "@ai", "/ask", "ai:"))
                 )
 
                 if is_ai_query:
                     # Extract prompt
-                    if text.startswith("/ai ") or text.startswith("@ai "):
+                    if text_lower.startswith(("/ai ", "@ai ")):
                         prompt = text[4:].strip()
-                    else:
+                    elif text_lower.startswith("/ask "):
+                        prompt = text[5:].strip()
+                    elif text_lower.startswith("ai:"):
+                        prompt = text[3:].strip()
+                    elif " " in text:
                         prompt = text.split(" ", 1)[1].strip()
+                    else:
+                        prompt = ""
+
+                    prompt = prompt.strip('"').strip("'").strip()
 
                     # 1. Broadcast user's query
                     user_msg = {
@@ -315,6 +321,18 @@ async def websocket_endpoint(
                     }
                     manager.add_history(user_msg)
                     await manager.broadcast(user_msg)
+
+                    if not prompt:
+                        usage_msg = {
+                            "id": str(uuid.uuid4()),
+                            "type": "ai",
+                            "sender": "🤖 TermChat AI",
+                            "client_type": "ai",
+                            "text": "Usage: `/ai <your question>`\nExample: `/ai write a python script to download a webpage`",
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        }
+                        await websocket.send_text(json.dumps(usage_msg))
+                        continue
 
                     # 2. Query AI asynchronously
                     loop = asyncio.get_running_loop()
