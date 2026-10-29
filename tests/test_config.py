@@ -1,5 +1,8 @@
 from termchat.config import (
     DEFAULT_FALLBACK_SERVER,
+    FALLBACK_DEFAULT_SERVER,
+    PRIMARY_DEFAULT_SERVER,
+    get_default_servers,
     get_saved_server_url,
     normalize_urls,
 )
@@ -8,8 +11,12 @@ from termchat.config import (
 def test_get_saved_server_url_default(monkeypatch):
     monkeypatch.delenv("TERMCHAT_SERVER", raising=False)
     monkeypatch.setattr("termchat.config.load_config", lambda: {})
-    assert get_saved_server_url() == DEFAULT_FALLBACK_SERVER
-    assert "termchat-live.onrender.com" in get_saved_server_url()
+    primary, fallback = get_default_servers()
+    assert primary == PRIMARY_DEFAULT_SERVER
+    assert "termchat.cliy.me" in primary
+    assert fallback == FALLBACK_DEFAULT_SERVER
+    assert "termchat-live.onrender.com" in fallback
+    assert get_saved_server_url() == PRIMARY_DEFAULT_SERVER
 
 
 def test_normalize_urls_https():

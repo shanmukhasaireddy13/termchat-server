@@ -11,6 +11,8 @@ from termchat.ai import query_llm
 from termchat.client import start
 from termchat.config import (
     DEFAULT_FALLBACK_SERVER,
+    PRIMARY_DEFAULT_SERVER,
+    get_default_servers,
     get_saved_ai_key,
     get_saved_server_url,
     get_saved_username,
@@ -98,8 +100,14 @@ def main():
             sys.exit(0)
 
 
-    # Determine server URL (defaults directly to live Singapore Render server)
-    server_url = (args.server or get_saved_server_url() or DEFAULT_FALLBACK_SERVER).strip()
+    # Determine server URL and fallback failover
+    primary_srv, fallback_srv = get_default_servers()
+    if args.server:
+        server_url = args.server.strip()
+        fallback_url = None
+    else:
+        server_url = primary_srv
+        fallback_url = fallback_srv
 
     # Determine username
     username = args.name or get_saved_username()
@@ -107,6 +115,7 @@ def main():
     start(
         server_url=server_url,
         username=username,
+        fallback_url=fallback_url,
         auto_open=args.open,
         no_thumb=args.no_thumb,
     )

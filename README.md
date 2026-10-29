@@ -62,7 +62,7 @@ pip install termchat-client
 
 ## 🚀 Quickstart (Zero-Config)
 
-Because the client comes pre-configured with the live server hosted in Singapore (`https://termchat-live.onrender.com`), you can chat immediately:
+The client comes pre-configured with the live custom domain (`https://termchat.cliy.me/`) and automatic failover fallback to the Singapore Render server (`https://termchat-live.onrender.com`), so you can chat immediately:
 
 ```bash
 pip install --upgrade termchat-client
@@ -84,7 +84,7 @@ termchat --name Alice
 ```
 Or specify a custom server if self-hosting:
 ```bash
-termchat --server https://termchat-live.onrender.com --name Alice
+termchat --server https://termchat.cliy.me --name Alice
 ```
 Or via Python module:
 ```bash
@@ -94,7 +94,7 @@ python -m termchat --name Alice
 ### 2. Save Your Preferences Once
 Save your online server URL or default name so you never need to type them again:
 ```bash
-termchat --set-server https://termchat-live.onrender.com
+termchat --set-server https://termchat.cliy.me
 termchat --set-name Alice
 ```
 Once saved, simply run:

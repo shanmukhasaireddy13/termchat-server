@@ -29,11 +29,10 @@ class TerminalClient:
         self,
         server_url: str,
         username: str,
+        fallback_url: Optional[str] = None,
         auto_open_images: bool = False,
         show_thumbnails: bool = True,
     ):
-        self.raw_server_url = server_url
-        self.ws_url, self.http_base_url = normalize_urls(server_url)
         self.username = username
         self.auto_open_images = auto_open_images
         self.show_thumbnails = show_thumbnails
@@ -41,12 +40,24 @@ class TerminalClient:
         self.websocket = None
         self.last_downloaded_image: Optional[Path] = None
 
+        self.server_candidates = [server_url.strip()]
+        if fallback_url and fallback_url.strip() != server_url.strip():
+            self.server_candidates.append(fallback_url.strip())
+        self.server_index = 0
+        self._apply_server(self.server_candidates[0])
+
+    def _apply_server(self, server_url: str):
+        self.raw_server_url = server_url
+        self.ws_url, self.http_base_url = normalize_urls(server_url)
+
     def print_welcome(self):
         """Prints a simple standard-line connection notice."""
         print(f"\n--- termchat connected ---")
-        print(f"User:   {self.username}")
-        print(f"Server: {self.http_base_url}")
-        print(f"Web UI: {self.http_base_url} (open in browser to chat or send images)")
+        print(f"User:     {self.username}")
+        print(f"Server:   {self.http_base_url}")
+        print(f"Web UI:   {self.http_base_url} (open in browser to chat or send images)")
+        if len(self.server_candidates) > 1:
+            print(f"Fallback: {self.server_candidates[1]}")
         print(f"Commands: /help, /open (view last image), /quit")
         print(f"---------------------------\n")
 
@@ -199,7 +210,7 @@ class TerminalClient:
                 print(f"[Input error: {e}]")
 
     async def run(self):
-        """Main client loop with automatic reconnect."""
+        """Main client loop with automatic reconnect and fallback server failover."""
         self.print_welcome()
         session = PromptSession()
 
@@ -209,19 +220,20 @@ class TerminalClient:
             "client_type": "terminal",
             "device_info": device,
         })
-        full_ws = f"{self.ws_url}?{query_params}"
 
         with patch_stdout():
             while self.running:
+                full_ws = f"{self.ws_url}?{query_params}"
                 try:
                     print(f"Connecting to {self.http_base_url}...")
                     async with websockets.connect(
                         full_ws,
                         ping_interval=25,
                         ping_timeout=15,
+                        open_timeout=8,
                     ) as ws:
                         self.websocket = ws
-                        print("Connected! Start typing text below (Press Enter to send):\n")
+                        print(f"Connected to {self.http_base_url}! Start typing text below (Press Enter to send):\n")
 
                         recv_task = asyncio.create_task(self._receive_loop(ws))
                         input_task = asyncio.create_task(self._input_loop(session))
@@ -241,16 +253,34 @@ class TerminalClient:
                         if not self.running:
                             break
 
-                except (ConnectionRefusedError, OSError) as e:
+                except (ConnectionRefusedError, OSError, websockets.exceptions.WebSocketException, asyncio.TimeoutError) as e:
                     if not self.running:
                         break
-                    print(f"Could not connect to {self.http_base_url}. Retrying in 3s... (Ctrl+C to exit)")
-                    await asyncio.sleep(3)
+                    if len(self.server_candidates) > 1:
+                        next_idx = (self.server_index + 1) % len(self.server_candidates)
+                        next_server = self.server_candidates[next_idx]
+                        print(f"\n[Warning] {self.http_base_url} unreachable ({e}).")
+                        print(f"[Failover] Switching to fallback server: {next_server}...")
+                        self.server_index = next_idx
+                        self._apply_server(next_server)
+                        await asyncio.sleep(1)
+                    else:
+                        print(f"Could not connect to {self.http_base_url}. Retrying in 3s... (Ctrl+C to exit)")
+                        await asyncio.sleep(3)
                 except Exception as e:
                     if not self.running:
                         break
-                    print(f"Connection error: {e}. Retrying in 3s...")
-                    await asyncio.sleep(3)
+                    if len(self.server_candidates) > 1:
+                        next_idx = (self.server_index + 1) % len(self.server_candidates)
+                        next_server = self.server_candidates[next_idx]
+                        print(f"\n[Warning] Connection issue on {self.http_base_url}: {e}")
+                        print(f"[Failover] Switching to fallback server: {next_server}...")
+                        self.server_index = next_idx
+                        self._apply_server(next_server)
+                        await asyncio.sleep(1)
+                    else:
+                        print(f"Connection error: {e}. Retrying in 3s...")
+                        await asyncio.sleep(3)
 
         print("\nExiting termchat. Goodbye!")
 
@@ -258,12 +288,14 @@ class TerminalClient:
 def start(
     server_url: str,
     username: str,
+    fallback_url: Optional[str] = None,
     auto_open: bool = False,
     no_thumb: bool = False,
 ):
     client = TerminalClient(
         server_url=server_url,
         username=username,
+        fallback_url=fallback_url,
         auto_open_images=auto_open,
         show_thumbnails=not no_thumb,
     )

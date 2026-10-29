@@ -7,10 +7,12 @@ and URL normalization for WebSocket and HTTP endpoints.
 import json
 import os
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 CONFIG_FILE = Path.home() / ".termchat.json"
-DEFAULT_FALLBACK_SERVER = "https://termchat-live.onrender.com"
+PRIMARY_DEFAULT_SERVER = "https://termchat.cliy.me"
+FALLBACK_DEFAULT_SERVER = "https://termchat-live.onrender.com"
+DEFAULT_FALLBACK_SERVER = FALLBACK_DEFAULT_SERVER
 
 
 
@@ -34,20 +36,30 @@ def save_config(config: Dict[str, str]):
         print(f"[Warning] Could not save config file: {e}")
 
 
-def get_saved_server_url() -> str:
-    """Retrieves server URL from ENV, config file, or falls back to DEFAULT_FALLBACK_SERVER."""
+def get_default_servers() -> Tuple[str, Optional[str]]:
+    """
+    Returns (primary_server, fallback_server).
+    If custom server is configured via ENV or ~/.termchat.json, returns (custom, None).
+    Otherwise returns (PRIMARY_DEFAULT_SERVER, FALLBACK_DEFAULT_SERVER).
+    """
     # 1. Environment variable takes highest priority
     env_url = os.environ.get("TERMCHAT_SERVER")
     if env_url:
-        return env_url.strip()
+        return env_url.strip(), None
 
     # 2. Config file
     cfg = load_config()
     if "server" in cfg and cfg["server"]:
-        return cfg["server"].strip()
+        return cfg["server"].strip(), None
 
-    # 3. Default to public online Render server (Singapore)
-    return DEFAULT_FALLBACK_SERVER
+    # 3. Default primary custom domain with Render Singapore fallback
+    return PRIMARY_DEFAULT_SERVER, FALLBACK_DEFAULT_SERVER
+
+
+def get_saved_server_url() -> str:
+    """Retrieves server URL from ENV, config file, or falls back to PRIMARY_DEFAULT_SERVER."""
+    primary, _ = get_default_servers()
+    return primary
 
 
 def set_saved_server_url(url: str):
