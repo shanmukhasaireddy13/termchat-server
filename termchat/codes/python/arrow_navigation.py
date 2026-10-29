@@ -1,3 +1,6 @@
+import os
+import sys
+import time
 import cv2
 import numpy as np
 import rclpy
@@ -112,17 +115,23 @@ class ArrowNavigation(Node):
                         frame, [contour], -1, (0, 255, 0), 2
                     )
 
-                cv2.putText(
-                    frame, label, (20, 40),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7,
-                    (255, 255, 255), 2
-                )
+                self.get_logger().info(f"State: {label}")
 
-                cv2.imshow('LYRA Arrow Navigation', frame)
-                cv2.imshow('Arrow Threshold', binary)
-
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
+                if os.environ.get("DISPLAY"):
+                    try:
+                        cv2.putText(
+                            frame, label, (20, 40),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7,
+                            (255, 255, 255), 2
+                        )
+                        cv2.imshow('LYRA Arrow Navigation', frame)
+                        cv2.imshow('Arrow Threshold', binary)
+                        if cv2.waitKey(1) & 0xFF == ord('q'):
+                            break
+                    except cv2.error:
+                        pass
+                else:
+                    time.sleep(0.05)
 
         finally:
             self.publish_velocity()

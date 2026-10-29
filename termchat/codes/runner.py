@@ -115,13 +115,13 @@ def list_available():
 
     print("\n[Arduino Sketches (In 'termchat export-codes')]")
     for f in sorted(ARDUINO_DIR.glob("*.ino")):
-        print(f"  • {f.name}")
+        print(f"  * {f.name}")
 
     print("\n[Guides & Manuals]")
-    print(f"  • {COMMANDS_GUIDE.name}")
-    print(f"  • {BEETLEBOT_GUIDE.name}")
-    print(f"  • {TURTLESIM_GUIDE.name}")
-    print(f"  • {OPERATION_MANUAL.name}")
+    print(f"  * {COMMANDS_GUIDE.name}")
+    print(f"  * {BEETLEBOT_GUIDE.name}")
+    print(f"  * {TURTLESIM_GUIDE.name}")
+    print(f"  * {OPERATION_MANUAL.name}")
     print("=" * 65)
 
 
@@ -237,7 +237,7 @@ def setup_lyra_workspace():
             shutil.copy2(src, dst)
             if sys.platform != "win32":
                 dst.chmod(0o755)
-            print(f"  ✓ Installed: {s}")
+            print(f"  [+] Installed: {s}")
 
     # Step 2: Check & update setup.py entry_points
     print("\n[2/4] Verifying ROS 2 setup.py entry points...")
@@ -251,11 +251,11 @@ def setup_lyra_workspace():
                     f"'console_scripts': [\n            {needed_entry},"
                 )
                 setup_py.write_text(content, encoding="utf-8")
-                print("  ✓ Registered 'obstacle_avoid' in setup.py console_scripts!")
+                print("  [+] Registered 'obstacle_avoid' in setup.py console_scripts!")
             else:
                 print("  [Notice] console_scripts block not found in setup.py; script can still be run via python3.")
         else:
-            print("  ✓ Entry point 'obstacle_avoid' already present in setup.py.")
+            print("  [+] Entry point 'obstacle_avoid' already present in setup.py.")
     else:
         print(f"  [Info] No setup.py at {setup_py}. Standalone python3 execution is ready!")
 
@@ -267,7 +267,7 @@ def setup_lyra_workspace():
             cwd=str(lyra_ws)
         )
         if res == 0:
-            print("  ✓ colcon build completed successfully!")
+            print("  [+] colcon build completed successfully!")
         else:
             print("  [Warning] colcon build returned non-zero code. You can still run with 'python3 obstacle_avoidance.py'.")
     else:
@@ -291,7 +291,12 @@ def export_codes(destination=None):
         destination = Path(destination)
 
     destination.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(CODES_DIR, destination, dirs_exist_ok=True)
+    shutil.copytree(
+        CODES_DIR,
+        destination,
+        dirs_exist_ok=True,
+        ignore=shutil.ignore_patterns('__pycache__', '*.pyc', '*.pt', '*.tmp')
+    )
     print(f"\n[OK] Successfully exported all codes to: {destination.resolve()}")
     print("Exported files include Arduino sketches, Python modules, and guides.\n")
     return 0

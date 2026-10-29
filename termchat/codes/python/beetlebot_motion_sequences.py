@@ -139,7 +139,7 @@ class LyraMotionRunner(Node if ROS2_AVAILABLE else object):
             self.get_logger().info(f"[Side {side}/4] Braking / Stopping (1.0s)...")
             self.publish_cmd(linear_x=0.0, angular_z=0.0, duration=1.0, rate_hz=10)
 
-            self.get_logger().info(f"[Side {side}/4] Turning 90° (2.0s at 0.5 rad/s)...")
+            self.get_logger().info(f"[Side {side}/4] Turning 90 deg (2.0s at 0.5 rad/s)...")
             self.publish_cmd(linear_x=0.0, angular_z=0.5, duration=2.0, rate_hz=10)
 
             self.get_logger().info(f"[Side {side}/4] Settling / Stopping (1.0s)...")
@@ -157,7 +157,7 @@ def run_keyboard_teleop():
         "--ros-args", "-r", "cmd_vel:=cmd_vel_nav"
     ]
     print("\n" + "=" * 65)
-    print("      BEETLE BOT JAZZY — KEYBOARD TELEOPERATION")
+    print("      BEETLE BOT JAZZY - KEYBOARD TELEOPERATION")
     print("=" * 65)
     print("Target Topic: /cmd_vel_nav")
     print("\nControls Reference:")
@@ -225,9 +225,13 @@ def main(action="list"):
             print("  seq         - Forward 5s -> Stop -> Backward 5s -> Stop")
             print("  teleop      - Launch keyboard teleoperation remapped to /cmd_vel_nav")
     finally:
-        node.emergency_stop()
-        node.destroy_node()
-        rclpy.shutdown()
+        try:
+            node.emergency_stop()
+            node.destroy_node()
+        except Exception:
+            pass
+        if rclpy.ok():
+            rclpy.shutdown()
 
     return 0
 

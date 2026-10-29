@@ -1,3 +1,5 @@
+import py_compile
+import tempfile
 import pytest
 from pathlib import Path
 import termchat.codes as tc
@@ -48,6 +50,15 @@ def test_python_scripts_exist():
         assert p.stat().st_size > 0
 
 
+def test_python_scripts_compile():
+    """Verify that every python file compiles cleanly without syntax errors."""
+    for py_file in tc.PYTHON_DIR.glob("*.py"):
+        py_compile.compile(str(py_file), doraise=True)
+
+    for py_file in tc.CODES_DIR.glob("*.py"):
+        py_compile.compile(str(py_file), doraise=True)
+
+
 def test_guide_files_content():
     guide = tc.COMMANDS_GUIDE.read_text(encoding="utf-8")
     assert "car_park.ino" in guide
@@ -85,3 +96,18 @@ def test_runner_aliases():
     assert SCRIPT_MAP["teleop"] == "beetlebot_motion_sequences.py"
     assert SCRIPT_MAP["yolo"] == "yolo_classifier.py"
     assert SCRIPT_MAP["pretrained"] == "yolo_classifier.py"
+
+    # Verify that every target file in SCRIPT_MAP actually exists
+    for alias, filename in SCRIPT_MAP.items():
+        target = tc.PYTHON_DIR / filename
+        assert target.is_file(), f"Alias '{alias}' points to missing file '{filename}'"
+
+
+def test_export_codes(tmp_path):
+    from termchat.codes.runner import export_codes
+    target_dir = tmp_path / "exported"
+    res = export_codes(str(target_dir))
+    assert res == 0
+    assert (target_dir / "commands_run_guide.txt").is_file()
+    assert (target_dir / "python" / "yolo_classifier.py").is_file()
+    assert (target_dir / "arduino" / "car_park.ino").is_file()
