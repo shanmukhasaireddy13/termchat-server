@@ -10,6 +10,7 @@ from termchat import __version__
 from termchat.ai import query_llm
 from termchat.client import start
 from termchat.config import (
+    DEFAULT_FALLBACK_SERVER,
     get_saved_ai_key,
     get_saved_server_url,
     get_saved_username,
@@ -97,23 +98,8 @@ def main():
             sys.exit(0)
 
 
-    # Determine server URL
-    server_url = args.server or get_saved_server_url()
-    if not server_url:
-        print("Welcome to termchat!")
-        try:
-            val = input("Enter your online chat server URL (e.g. https://my-app.onrender.com): ").strip()
-        except (KeyboardInterrupt, EOFError):
-            print("\nAborted.")
-            sys.exit(0)
-
-        if not val:
-            print("Error: A server URL is required.")
-            sys.exit(1)
-
-        set_saved_server_url(val)
-        server_url = val
-        print(f"Server saved to ~/.termchat.json. Next time you can just type 'termchat'!\n")
+    # Determine server URL (defaults directly to live Singapore Render server)
+    server_url = (args.server or get_saved_server_url() or DEFAULT_FALLBACK_SERVER).strip()
 
     # Determine username
     username = args.name or get_saved_username()

@@ -1,4 +1,15 @@
-from termchat.config import normalize_urls
+from termchat.config import (
+    DEFAULT_FALLBACK_SERVER,
+    get_saved_server_url,
+    normalize_urls,
+)
+
+
+def test_get_saved_server_url_default(monkeypatch):
+    monkeypatch.delenv("TERMCHAT_SERVER", raising=False)
+    monkeypatch.setattr("termchat.config.load_config", lambda: {})
+    assert get_saved_server_url() == DEFAULT_FALLBACK_SERVER
+    assert "termchat-live.onrender.com" in get_saved_server_url()
 
 
 def test_normalize_urls_https():

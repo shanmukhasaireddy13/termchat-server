@@ -34,8 +34,8 @@ def save_config(config: Dict[str, str]):
         print(f"[Warning] Could not save config file: {e}")
 
 
-def get_saved_server_url() -> Optional[str]:
-    """Retrieves server URL from ENV, config file, or None."""
+def get_saved_server_url() -> str:
+    """Retrieves server URL from ENV, config file, or falls back to DEFAULT_FALLBACK_SERVER."""
     # 1. Environment variable takes highest priority
     env_url = os.environ.get("TERMCHAT_SERVER")
     if env_url:
@@ -46,7 +46,8 @@ def get_saved_server_url() -> Optional[str]:
     if "server" in cfg and cfg["server"]:
         return cfg["server"].strip()
 
-    return None
+    # 3. Default to public online Render server (Singapore)
+    return DEFAULT_FALLBACK_SERVER
 
 
 def set_saved_server_url(url: str):
