@@ -139,7 +139,11 @@ class ConnectionManager:
             await self.disconnect(ws)
 
 
-from server.ai import query_llm
+try:
+    from ai import query_llm
+except ImportError:
+    from server.ai import query_llm
+
 
 manager = ConnectionManager()
 
