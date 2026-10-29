@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>termchat — Web to Terminal Bridge</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%20width=%22100%22%20height=%22100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+</head>
+<body>
+  <div id="app" class="app-container">
+    <!-- HEADER -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="logo-box">
+          <span class="prompt-symbol">&gt;_</span>
+        </div>
+        <div>
+          <h1>term<span>chat</span></h1>
+          <span class="subtitle">Live Terminal ↔ Web Bridge</span>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div class="status-indicator" id="statusIndicator">
+          <span class="dot disconnected" id="statusDot"></span>
+          <span id="statusText">Connecting...</span>
+        </div>
+
+        <button id="usersButton" class="header-btn" title="View Active Participants">
+          👥 <span id="onlineCount">0</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN CHAT BODY -->
+    <div class="app-body">
+      <!-- SIDEBAR FOR USERS -->
+      <aside class="users-sidebar" id="usersSidebar">
+        <div class="sidebar-top">
+          <h3>Participants (<span id="sidebarUserCount">0</span>)</h3>
+          <button class="close-sidebar-btn" id="closeSidebarBtn">&times;</button>
+        </div>
+        <div class="users-group">
+          <div class="group-label">💻 Terminal Clients</div>
+          <ul id="terminalList" class="user-ul">
+            <li class="empty-li">No terminals connected</li>
+          </ul>
+        </div>
+        <div class="users-group">
+          <div class="group-label">🌐 Web Clients</div>
+          <ul id="webList" class="user-ul">
+            <li class="empty-li">No web users connected</li>
+          </ul>
+        </div>
+      </aside>
+
+      <!-- CHAT STREAM -->
+      <main class="chat-main" id="dropZone">
+        <!-- Drag overlay -->
+        <div class="drop-overlay hidden" id="dropOverlay">
+          <div class="drop-content">
+            <span class="drop-icon">📁</span>
+            <h3>Drop Image to Send to Terminal</h3>
+            <p>PNG, JPG, GIF, WebP supported</p>
+          </div>
+        </div>
+
+        <div class="messages-list" id="messagesList">
+          <div class="info-card">
+            <div class="info-icon">⚡</div>
+            <h3>Online Terminal & Web Chat Bridge</h3>
+            <p>Messages typed in connected terminals (Linux, Raspberry Pi, Windows, macOS) appear here in real time. Send text responses or <strong>upload / paste images</strong> below to transmit them directly into their terminals!</p>
+          </div>
+        </div>
+
+        <!-- Image Upload Preview Box (when an image is selected before sending) -->
+        <div class="image-preview-bar hidden" id="imagePreviewBar">
+          <img id="previewImg" src="" alt="Upload preview" />
+          <div class="preview-info">
+            <span id="previewFilename">image.png</span>
+            <span class="preview-sub">Ready to send to terminal</span>
+          </div>
+          <button class="remove-preview-btn" id="cancelUploadBtn" title="Cancel">&times;</button>
+        </div>
+
+        <!-- INPUT FORM -->
+        <div class="input-container">
+          <form id="chatForm" class="input-form" onsubmit="return false;">
+            <!-- User Nickname Tag -->
+            <button type="button" class="nickname-btn" id="nicknameBtn" title="Click to change your display name">
+              <span class="nick-dot"></span>
+              <span id="displayNickname">WebUser</span>
+            </button>
+
+            <!-- Attach Image Button -->
+            <input type="file" id="fileInput" accept="image/*" class="hidden" />
+            <button type="button" id="attachBtn" class="action-btn" title="Send image to terminal (or Ctrl+V to paste screenshot)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21 15 16 10 5 21"></polyline>
+              </svg>
+            </button>
+
+            <!-- Ask AI Button -->
+            <button type="button" id="askAiBtn" class="action-btn ai-btn" title="Ask AI Assistant (/ai ...)">
+              🤖
+            </button>
+
+
+            <!-- Text Input -->
+            <textarea
+              id="messageInput"
+              placeholder="Send text or paste image (Ctrl+V) to terminal..."
+              rows="1"
+              maxlength="2000"
+            ></textarea>
+
+            <!-- Send Button -->
+            <button type="submit" id="sendBtn" class="send-btn" title="Send (Enter)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </form>
+        </div>
+      </main>
+    </div>
+
+    <!-- LIGHTBOX MODAL FOR IMAGES -->
+    <div class="modal-overlay hidden" id="lightboxModal">
+      <div class="lightbox-content">
+        <button class="lightbox-close" id="closeLightbox">&times;</button>
+        <img id="lightboxImg" src="" alt="Enlarged image" />
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
